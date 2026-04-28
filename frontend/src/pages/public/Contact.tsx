@@ -11,7 +11,7 @@ const channels = [
     title: "Email",
     desc: "Send us an email for detailed queries or billing questions.",
     link: "mailto:maurice@giftedtech.co.ke",
-    label: "maurice@giftedtech.co.ke",
+    label: "Send an Email",
     accent: "border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-950/20",
     btnColor: "bg-blue-500 hover:bg-blue-600 text-white",
     aos: "zoom-in",
@@ -95,14 +95,14 @@ export default function Contact() {
       </section>
 
       {/* Contact channels — 3 cards, centered */}
-      <section className="px-4 pb-8">
-        <div className="max-w-4xl mx-auto flex flex-wrap justify-center gap-4">
+      <section className="px-4 pb-8 overflow-hidden">
+        <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4">
           {channels.map((c, i) => (
             <div
               key={c.title}
               data-aos={c.aos}
               data-aos-delay={String(i * 100)}
-              className={`border rounded-2xl p-6 text-center flex-1 min-w-[220px] max-w-[280px] ${c.accent}`}
+              className={`border rounded-2xl p-6 text-center ${c.accent}`}
             >
               <div className={`w-12 h-12 rounded-2xl ${c.color} center text-white mx-auto mb-4`}>
                 <c.icon size={22} />
@@ -123,7 +123,7 @@ export default function Contact() {
       </section>
 
       {/* Contact form */}
-      <section className="px-4 pb-12">
+      <section className="px-4 pb-12 overflow-hidden">
         <div className="max-w-2xl mx-auto">
           <div data-aos="fade-up" data-aos-duration="700" className="bg-background border border-line rounded-2xl p-6 md:p-8">
             {sent ? (
