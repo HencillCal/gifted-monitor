@@ -16,12 +16,12 @@ export default function UptimeBar({ history, maxBars = 30 }: UptimeBarProps) {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
 
   // History arrives from the API in ASC order (oldest first, newest last).
-  // Take the most-recent maxBars entries — they are still in oldest→newest order.
-  // Pad nulls at the START (left side) for unfilled old time slots.
-  const recent = history.slice(-maxBars);
+  // We display: LEFT = newest (most recent), RIGHT = oldest.
+  // Grey pads go at the END (right side) for monitors with fewer than maxBars checks.
+  const recent = [...history].reverse().slice(0, maxBars); // [newest, …, oldest] — at most maxBars
   const padded: (CheckHistory | null)[] = [
-    ...Array(Math.max(0, maxBars - recent.length)).fill(null),
     ...recent,
+    ...Array(Math.max(0, maxBars - recent.length)).fill(null),
   ];
 
   return (
