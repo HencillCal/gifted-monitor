@@ -40,8 +40,10 @@ It's a full-stack self-hostable uptime monitoring SaaS with multi-DB support. It
 | OTP / Link Auth | Email link-based verification for signup and password reset |
 | JWT Auth | 1-day tokens with 12-hour sliding auto-refresh |
 | **API Keys** | Create/revoke personal API keys from Profile → API Keys tab |
-| **REST API v1** | Full monitor CRUD via `X-API-Key` header — no browser required |
-| **API Docs** | Built-in docs page at `/docs` with code examples (Node/Python/PHP) |
+| **REST API v1** | Full monitor CRUD + notification prefs via `X-API-Key` — no browser required |
+| **Notification Prefs API** | `PATCH /api/v1/monitors/:id/notifications` — toggle `notify_down`/`notify_up` per monitor |
+| **API Docs** | Built-in docs page at `/api-docs` (also `/docs`) with code examples (Node/Python/PHP) |
+| **System Theme** | Default theme follows OS preference; switch to Light/Dark/System from the header menu |
 | Admin Panel | Manage all users, monitors, and contact messages |
 | Super Admin | First verified user becomes the platform Super Admin |
 | Breadcrumb Navigation | Full breadcrumb trail on every authenticated page |
