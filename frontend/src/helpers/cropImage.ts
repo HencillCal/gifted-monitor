@@ -5,7 +5,10 @@ function createImage(url: string): Promise<HTMLImageElement> {
     const img = new window.Image();
     img.addEventListener("load", () => resolve(img));
     img.addEventListener("error", reject);
-    img.setAttribute("crossOrigin", "anonymous");
+    // Do NOT set crossOrigin for blob: URLs — it causes canvas security errors on mobile
+    if (!url.startsWith("blob:")) {
+      img.setAttribute("crossOrigin", "anonymous");
+    }
     img.src = url;
   });
 }
@@ -13,10 +16,14 @@ function createImage(url: string): Promise<HTMLImageElement> {
 export default async function getCroppedImg(imageSrc: string, pixelCrop: PixelCrop): Promise<string> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas context unavailable");
 
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
+  // Cap output at 400 px to avoid mobile out-of-memory errors on high-DPR screens
+  const MAX_SIZE = 400;
+  const size = Math.min(Math.min(pixelCrop.width, pixelCrop.height), MAX_SIZE);
+  canvas.width = size;
+  canvas.height = size;
 
   ctx.drawImage(
     image,
@@ -26,9 +33,9 @@ export default async function getCroppedImg(imageSrc: string, pixelCrop: PixelCr
     pixelCrop.height,
     0,
     0,
-    pixelCrop.width,
-    pixelCrop.height
+    size,
+    size,
   );
 
-  return canvas.toDataURL("image/jpeg", 0.92);
+  return canvas.toDataURL("image/jpeg", 0.85);
 }
