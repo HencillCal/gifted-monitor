@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store";
 import { useTheme } from "@/hooks";
 import api from "@/config/api";
 
-import { Home, About, Contact, Terms, Privacy } from "@/pages/public";
+import { Home, About, Contact, Terms, Privacy, ApiDocs } from "@/pages/public";
 import { Login, Signup, ForgotPassword, VerifyOtp, ResetPassword } from "@/pages/auth";
 import { Dashboard, Monitors, MonitorDetail, CreateMonitor, Profile } from "@/pages/main";
 import AdminUsers from "@/pages/main/admin/Users";
@@ -63,6 +63,7 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/docs" element={<ApiDocs />} />
 
         {/* Auth routes (redirect to dashboard if already logged in) */}
         <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />

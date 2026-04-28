@@ -23,7 +23,7 @@ async function createPostgresAdapter(DATABASE_URL) {
     CREATE TABLE IF NOT EXISTS otp_codes (
       id SERIAL PRIMARY KEY,
       email VARCHAR(150) NOT NULL,
-      code VARCHAR(10) NOT NULL,
+      code TEXT NOT NULL,
       type VARCHAR(20) NOT NULL,
       expires_at TIMESTAMPTZ NOT NULL,
       used BOOLEAN DEFAULT false,
@@ -67,6 +67,16 @@ async function createPostgresAdapter(DATABASE_URL) {
       is_read BOOLEAN DEFAULT false,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      name VARCHAR(100) NOT NULL,
+      key_hash TEXT UNIQUE NOT NULL,
+      key_prefix VARCHAR(20) NOT NULL,
+      last_used TIMESTAMPTZ,
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
   `);
 
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT false`).catch(() => {});
@@ -81,8 +91,8 @@ async function createPostgresAdapter(DATABASE_URL) {
   await pool.query(`ALTER TABLE users ALTER COLUMN whatsapp DROP NOT NULL`).catch(() => {});
   await pool.query(`ALTER TABLE users ALTER COLUMN whatsapp SET DEFAULT ''`).catch(() => {});
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_email VARCHAR(150)`).catch(() => {});
-  // Migrate: if whatsapp column looks like an email, copy to email (VPS migration from WhatsApp-based notifications)
   await pool.query(`UPDATE users SET notify_down=true, notify_up=true WHERE notify_down IS NULL OR notify_up IS NULL`).catch(() => {});
+  await pool.query(`ALTER TABLE otp_codes ALTER COLUMN code TYPE TEXT`).catch(() => {});
 
   return {
     async getUserCount() {
@@ -98,7 +108,6 @@ async function createPostgresAdapter(DATABASE_URL) {
     },
     async getUserByEmail(email) { const r = await pool.query('SELECT * FROM users WHERE email=$1', [email]); return r.rows[0] || null; },
     async getUserByUsername(username) { const r = await pool.query('SELECT * FROM users WHERE username=$1', [username]); return r.rows[0] || null; },
-    async getUserByWhatsapp(whatsapp) { const r = await pool.query('SELECT * FROM users WHERE whatsapp=$1', [whatsapp]); return r.rows[0] || null; },
     async getUserById(id) { const r = await pool.query('SELECT * FROM users WHERE id=$1', [id]); return r.rows[0] || null; },
     async updateUser(id, fields) {
       const keys = Object.keys(fields), vals = Object.values(fields);
@@ -155,7 +164,7 @@ async function createPostgresAdapter(DATABASE_URL) {
     },
     async deleteMonitor(id) { await pool.query('DELETE FROM monitors WHERE id=$1', [id]); },
     async getAllActiveMonitors() {
-      const r = await pool.query(`SELECT m.*,u.name as user_name,u.email as user_email,u.whatsapp as user_whatsapp FROM monitors m JOIN users u ON m.user_id=u.id WHERE m.is_active=true`);
+      const r = await pool.query(`SELECT m.*,u.name as user_name,u.email as user_email FROM monitors m JOIN users u ON m.user_id=u.id WHERE m.is_active=true`);
       return r.rows;
     },
     async addCheckHistory(monitorId, status, responseTime, errorMsg) {
@@ -185,6 +194,31 @@ async function createPostgresAdapter(DATABASE_URL) {
     },
     async markContactRead(id) { await pool.query('UPDATE contact_messages SET is_read=true WHERE id=$1', [id]); },
     async deleteContactMessage(id) { await pool.query('DELETE FROM contact_messages WHERE id=$1', [id]); },
+
+    async createApiKey(userId, name, keyHash, keyPrefix) {
+      const r = await pool.query(
+        'INSERT INTO api_keys (user_id,name,key_hash,key_prefix) VALUES ($1,$2,$3,$4) RETURNING *',
+        [userId, name, keyHash, keyPrefix]
+      );
+      return r.rows[0];
+    },
+    async getUserApiKeys(userId) {
+      const r = await pool.query('SELECT id,name,key_prefix,last_used,is_active,created_at FROM api_keys WHERE user_id=$1 AND is_active=true ORDER BY created_at DESC', [userId]);
+      return r.rows;
+    },
+    async getApiKeyByHash(keyHash) {
+      const r = await pool.query('SELECT * FROM api_keys WHERE key_hash=$1 AND is_active=true', [keyHash]);
+      return r.rows[0] || null;
+    },
+    async revokeApiKey(id, userId) {
+      await pool.query('UPDATE api_keys SET is_active=false WHERE id=$1 AND user_id=$2', [id, userId]);
+    },
+    async deleteApiKey(id, userId) {
+      await pool.query('DELETE FROM api_keys WHERE id=$1 AND user_id=$2', [id, userId]);
+    },
+    async updateApiKeyLastUsed(id) {
+      await pool.query('UPDATE api_keys SET last_used=NOW() WHERE id=$1', [id]);
+    },
   };
 }
 

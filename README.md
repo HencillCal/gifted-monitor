@@ -1,5 +1,5 @@
 <h1 align="center">🟢 Gifted Monitor</h1>
-<p align="center"><b>24/7 uptime monitoring SaaS with instant email alerts</b></p>
+<p align="center"><b>24/7 uptime monitoring SaaS with instant email alerts and a full REST API</b></p>
 
 <p align="center">
   <a href="https://monitor.giftedtech.co.ke"><img src="https://img.shields.io/badge/LIVE%20APP-monitor.giftedtech.co.ke-green?style=for-the-badge&logo=googlechrome" alt="Live App"/></a>
@@ -33,11 +33,14 @@
 | Email Change | Confirm new email via link sent to the new address |
 | OTP / Link Auth | Email link-based verification for signup and password reset |
 | JWT Auth | 1-day tokens with 12-hour sliding auto-refresh |
+| **API Keys** | Create/revoke personal API keys from Profile → API Keys tab |
+| **REST API v1** | Full monitor CRUD via `X-API-Key` header — no browser required |
+| **API Docs** | Built-in docs page at `/docs` with code examples (Node/Python/PHP) |
 | Admin Panel | Manage all users, monitors, and contact messages |
 | Super Admin | First verified user becomes the platform Super Admin |
 | Breadcrumb Navigation | Full breadcrumb trail on every authenticated page |
 | Contact Form | Public contact page saves messages to the database |
-| PostgreSQL | Single-adapter backend — Neon or any PostgreSQL host |
+| **Multi-DB** | Auto-detects PostgreSQL, MySQL, or MongoDB from `DATABASE_URL` |
 | Mobile-Responsive | Curved mobile sidebar, hamburger nav, full footer on all pages |
 | Monitor Limit | Per-user monitor quota with admin-configurable limits |
 | Bulk Actions | Select-all + bulk operations on monitors, users, and messages |
@@ -59,8 +62,8 @@
 **Backend**
 - **Runtime:** Node.js 18+ (CommonJS)
 - **Framework:** Express 4
-- **Database:** PostgreSQL (Neon recommended)
-- **Auth:** JWT (`jsonwebtoken`) + bcrypt (`bcryptjs`, 12 rounds)
+- **Database:** PostgreSQL, MySQL, or MongoDB — auto-detected from `DATABASE_URL`
+- **Auth:** JWT (`jsonwebtoken`) + bcrypt (`bcryptjs`, 12 rounds) + SHA-256 hashed API keys
 - **HTTP Client:** Axios (for pinging monitors)
 - **Email:** Resend API — up to 5 domain/key pairs in round-robin rotation
 - **Security:** Helmet, express-rate-limit
@@ -68,7 +71,7 @@
 **Frontend**
 - **Framework:** React 19 + TypeScript
 - **Build Tool:** Vite 7
-- **Styling:** Tailwind CSS v4
+- **Styling:** Tailwind CSS v4 (via `@tailwindcss/vite` plugin — no PostCSS needed)
 - **State:** Zustand (persisted to localStorage)
 - **Data Fetching:** TanStack Query v5
 - **Forms:** React Hook Form + Zod validation
@@ -100,37 +103,41 @@ gifted-monitor/
 │   ├── .env.example          # Example environment file
 │   ├── lib/
 │   │   ├── server.js         # Express setup — API routes + static file serving
-│   │   ├── auth.js           # JWT sign/verify, requireAuth, requireAdmin middleware
+│   │   ├── auth.js           # JWT sign/verify, requireAuth, requireApiKey middleware
 │   │   ├── ping.js           # Monitoring engine (interval-based pinger)
 │   │   ├── email.js          # Resend API email helpers (round-robin multi-domain)
 │   │   └── db/
 │   │       ├── index.js      # DB adapter selector (auto-detects from DATABASE_URL)
 │   │       └── adapters/
-│   │           └── postgres.js
+│   │           ├── postgres.js   # PostgreSQL adapter
+│   │           ├── mysql.js      # MySQL adapter
+│   │           └── mongo.js      # MongoDB adapter
 │   └── routes/
 │       ├── index.js          # Route aggregator
 │       ├── auth.js           # /api/auth/* endpoints
 │       ├── monitors.js       # /api/monitors/* endpoints
+│       ├── apikeys.js        # /api/apikeys/* endpoints (JWT-authenticated key management)
+│       ├── v1.js             # /api/v1/* public REST API (API key auth)
 │       ├── admin.js          # /api/admin/* endpoints
 │       └── public.js         # /api/contact, /api/status
 │
 └── frontend/                 # React + Vite SPA
     ├── index.html
-    ├── vite.config.ts        # Dev proxy: /api → localhost:3000
+    ├── vite.config.ts        # Dev proxy: /api → localhost:3000; Tailwind via plugin
     ├── src/
     │   ├── App.tsx           # Routes + route guards (PrivateRoute, AdminRoute, GuestRoute)
     │   ├── layouts/
     │   │   ├── AppLayout.tsx         # Authenticated layout (header + sidebar + footer)
     │   │   └── PublicLayout.tsx      # Public layout (nav + footer)
     │   ├── pages/
-    │   │   ├── public/       # Home, About, Contact, Terms, Privacy
+    │   │   ├── public/       # Home, About, Contact, Terms, Privacy, ApiDocs
     │   │   ├── auth/         # Login, Signup, ForgotPassword, VerifyOtp, ResetPassword
     │   │   └── main/
     │   │       ├── Dashboard.tsx
     │   │       ├── Monitors.tsx
     │   │       ├── MonitorDetail.tsx
     │   │       ├── CreateMonitor.tsx
-    │   │       ├── Profile.tsx
+    │   │       ├── Profile.tsx       # 5 tabs: Profile / Notifications / Security / API Keys / Account
     │   │       └── admin/
     │   │           ├── AdminDashboard.tsx
     │   │           ├── Users.tsx
@@ -265,7 +272,14 @@ PORT=3000
 NODE_ENV=production
 
 # ── Database ─────────────────────────────────────────────────────────
+# PostgreSQL (Neon, Supabase, Railway, local)
 DATABASE_URL=postgresql://user:password@host/dbname
+
+# MySQL
+# DATABASE_URL=mysql://user:password@host:3306/dbname
+
+# MongoDB
+# DATABASE_URL=mongodb+srv://user:password@cluster.mongodb.net/dbname
 
 # ── Auth ─────────────────────────────────────────────────────────────
 JWT_SECRET=your_strong_random_secret_here
@@ -310,45 +324,93 @@ ALLOWED_ORIGINS=https://monitor.yourdomain.com
 ## 7. DATABASE SETUP
 
 <details>
-<summary>TAP TO EXPAND</summary>
+<summary>TAP TO EXPAND — PostgreSQL (Neon / Supabase / Railway)</summary>
+
+**Recommended for most deployments.** Free-tier Neon is sufficient for self-hosted use.
+
+```env
+DATABASE_URL=postgresql://user:password@ep-xxxx.us-east-1.aws.neon.tech/neondb?sslmode=require
+```
 
 All tables are created automatically on first startup — no manual migrations needed.
 
 **Schema (auto-created):**
 
 ```sql
-users (
-  id, username, name, email, password_hash,
-  is_verified, is_admin, is_superadmin, is_disabled,
-  avatar, monitor_limit, notify_down, notify_up,
-  pending_email, created_at
-)
+users          (id, username, name, email, password_hash, is_verified, is_admin,
+                is_superadmin, is_disabled, avatar, monitor_limit, notify_down,
+                notify_up, pending_email, created_at)
 
-monitors (
-  id, user_id, name, url, path, method, body,
-  interval_mins, last_status, last_checked_at,
-  uptime_pct, notify_down, notify_up,
-  is_active, is_down, down_since, created_at
-)
+monitors       (id, user_id, name, url, path, method, body, interval_mins,
+                last_status, last_checked, uptime_pct, notify_down, notify_up,
+                is_active, incident_start, last_reminder_at, created_at)
 
-check_history (
-  id, monitor_id, status, response_time, error_msg, checked_at
-)
+check_history  (id, monitor_id, status, response_time, error_msg, checked_at)
 
-otp_codes (
-  id, email, code, type, expires_at, used, created_at
-)
+otp_codes      (id, email, code, type, expires_at, used, created_at)
 
-contact_messages (
-  id, name, email, subject, message, is_read, created_at
-)
+contact_messages (id, name, email, subject, message, is_read, created_at)
+
+api_keys       (id, user_id, name, key_hash, key_prefix, last_used, is_active, created_at)
 ```
-
-**PostgreSQL via Neon** is the recommended setup. Free tier is sufficient for most self-hosted deployments.
 
 > `users.monitor_limit` defaults to `20`. Admins/superadmins have no limit applied.
 
-> `users.pending_email` holds the unconfirmed new email address during an email-change flow.
+</details>
+
+<details>
+<summary>TAP TO EXPAND — MySQL (PlanetScale / Railway / local)</summary>
+
+```env
+DATABASE_URL=mysql://user:password@host:3306/dbname
+```
+
+All tables are auto-created on startup, identical schema to PostgreSQL. Requires `mysql2` package (already in `backend/package.json`).
+
+</details>
+
+<details>
+<summary>TAP TO EXPAND — MongoDB (Atlas / Railway / local)</summary>
+
+```env
+DATABASE_URL=mongodb+srv://user:password@cluster.mongodb.net/gifted-monitor
+```
+
+Collections are created automatically. The MongoDB adapter uses `_id` as the document identifier (auto-converted to `id` in all responses for API consistency).
+
+</details>
+
+<details>
+<summary>TAP TO EXPAND — Local PostgreSQL (localhost dev)</summary>
+
+For local development without a cloud DB:
+
+**1. Install PostgreSQL**
+```bash
+# macOS
+brew install postgresql@16 && brew services start postgresql@16
+
+# Ubuntu/Debian
+sudo apt install postgresql postgresql-contrib && sudo systemctl start postgresql
+```
+
+**2. Create a database and user**
+```bash
+sudo -u postgres psql
+```
+```sql
+CREATE USER monitor_user WITH PASSWORD 'strongpassword';
+CREATE DATABASE gifted_monitor OWNER monitor_user;
+GRANT ALL PRIVILEGES ON DATABASE gifted_monitor TO monitor_user;
+\q
+```
+
+**3. Set DATABASE_URL in your `.env`**
+```env
+DATABASE_URL=postgresql://monitor_user:strongpassword@localhost:5432/gifted_monitor
+```
+
+All tables are created automatically when the backend starts. No manual SQL needed.
 
 </details>
 
@@ -356,7 +418,62 @@ contact_messages (
 
 ---
 
-## 8. AUTH FLOW
+## 8. RESEND EMAIL SETUP
+
+<details>
+<summary>TAP TO EXPAND — Single account</summary>
+
+1. Create an account at [resend.com](https://resend.com)
+2. Add and verify your sending domain (e.g. `alerts.yourdomain.com`)
+3. Create an API key scoped to that domain
+4. Set in your `.env`:
+
+```env
+RESEND1_API_KEY=re_xxxxxxxxxxxxxxxxxxxx
+RESEND1_DOMAIN=alerts.yourdomain.com
+```
+
+The `From` address on all emails will be `Gifted Monitor <no-reply@alerts.yourdomain.com>`.
+
+</details>
+
+<details>
+<summary>TAP TO EXPAND — Multiple accounts / domains (round-robin failover)</summary>
+
+You can configure up to **5 Resend accounts or domains** for round-robin failover. On every email send, the system tries `RESEND1` first. If it fails (rate limit, domain error, etc.), it tries `RESEND2`, then `RESEND3`, and so on. An error is only returned to the caller after **all** configured domains have been tried.
+
+```env
+# First account / domain
+RESEND1_API_KEY=re_AAAAaaaa11111111111111
+RESEND1_DOMAIN=alerts.yourdomain.com
+
+# Second account / domain (different Resend account or same account, different domain)
+RESEND2_API_KEY=re_BBBBbbbb22222222222222
+RESEND2_DOMAIN=alerts2.anotherdomain.com
+
+# Optional third, fourth, fifth
+RESEND3_API_KEY=re_CCCCcccc33333333333333
+RESEND3_DOMAIN=notify.thirddomain.com
+```
+
+**Why use multiple domains?**
+- Resend free tier: 3,000 emails/month per account
+- Multiple accounts multiply your free allowance
+- If one domain's reputation drops, alerts still go through on the others
+- Zero-downtime failover — no code changes needed
+
+**Tips:**
+- Each `RESEND_DOMAIN` must be verified in its corresponding Resend account
+- API keys should be scoped to "Sending access" only
+- Only `RESEND1_*` is required — RESEND2–5 are all optional
+
+</details>
+
+<img src='https://i.imgur.com/LyHic3i.gif'/>
+
+---
+
+## 9. AUTH FLOW
 
 <details>
 <summary>TAP TO EXPAND</summary>
@@ -406,7 +523,7 @@ contact_messages (
 
 ---
 
-## 9. MONITORING ENGINE
+## 10. MONITORING ENGINE
 
 <details>
 <summary>TAP TO EXPAND</summary>
@@ -415,7 +532,7 @@ The ping engine runs in the backend process as a recurring loop.
 
 **How it works:**
 1. Every `PING_CHECK_INTERVAL_SECS` (default: 10s), the engine queries all active monitors
-2. For each monitor whose `last_checked_at + interval_mins` is in the past, a ping is dispatched
+2. For each monitor whose `last_checked + interval_mins` is in the past, a ping is dispatched
 3. The ping is an HTTP request (`GET`, `HEAD`, or `POST`) using Axios with a 15-second timeout
 4. A `2xx` response → **UP**; anything else → **DOWN**
 5. Before sending a down alert, the engine waits 8 seconds and retries once to prevent false alarms
@@ -440,7 +557,7 @@ The ping engine runs in the backend process as a recurring loop.
 
 ---
 
-## 10. ADMIN PANEL
+## 11. ADMIN PANEL
 
 <details>
 <summary>TAP TO EXPAND</summary>
@@ -465,7 +582,7 @@ Accessible via the **Admin** dropdown in the navigation — requires admin or su
 
 ---
 
-## 11. BULK ACTIONS
+## 12. BULK ACTIONS
 
 <details>
 <summary>TAP TO EXPAND</summary>
@@ -503,7 +620,202 @@ Bulk selection is available across three areas. Select items using checkboxes �
 
 ---
 
-## 12. API REFERENCE
+## 13. API KEYS
+
+<details>
+<summary>TAP TO EXPAND</summary>
+
+Each user can create up to **10 personal API keys** from **Profile → API Keys** tab. Keys authenticate requests to the public REST API (`/api/v1/*`) using the `X-API-Key` header.
+
+**Key format:** `gm_` + 64 hex characters (e.g. `gm_4a8f2b1c...`)
+
+**Security:**
+- The full key is shown **only once** at creation — copy it immediately
+- Only the SHA-256 hash is stored in the database — the plaintext is never persisted
+- Each key tracks `last_used` timestamp
+- Keys can be revoked instantly from the Profile page
+- Revoking a key invalidates it immediately for all future requests
+
+**Creating a key via the API (JWT required):**
+```bash
+curl -X POST https://monitor.giftedtech.co.ke/api/apikeys \
+  -H "Authorization: Bearer YOUR_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My CI Key"}'
+```
+
+**Response:**
+```json
+{
+  "key": "gm_4a8f2b1c...",
+  "prefix": "gm_4a8f2b1c00",
+  "name": "My CI Key",
+  "message": "Copy this key — it will not be shown again."
+}
+```
+
+**Listing keys:**
+```bash
+curl https://monitor.giftedtech.co.ke/api/apikeys \
+  -H "Authorization: Bearer YOUR_JWT"
+```
+
+**Revoking a key:**
+```bash
+curl -X DELETE https://monitor.giftedtech.co.ke/api/apikeys/KEY_ID \
+  -H "Authorization: Bearer YOUR_JWT"
+```
+
+</details>
+
+<img src='https://i.imgur.com/LyHic3i.gif'/>
+
+---
+
+## 14. PUBLIC REST API v1
+
+<details>
+<summary>TAP TO EXPAND — Overview</summary>
+
+The public REST API is available at `/api/v1/*`. All endpoints require an `X-API-Key` header. Create keys from **Profile → API Keys** tab. Full interactive documentation is available in-app at `/docs`.
+
+**Base URL:** `https://monitor.giftedtech.co.ke/api/v1`
+
+**Authentication:**
+```
+X-API-Key: gm_your_api_key_here
+```
+
+**Error responses:**
+
+| Status | Meaning |
+|---|---|
+| `401` | Missing or invalid API key |
+| `403` | Key is valid but you don't own this resource |
+| `404` | Resource not found |
+| `400` | Validation error (see `error` field) |
+| `500` | Server error |
+
+</details>
+
+<details>
+<summary>TAP TO EXPAND — Monitors endpoints</summary>
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/monitors` | List all your monitors with last 30 checks each |
+| `POST` | `/monitors` | Create a new monitor |
+| `GET` | `/monitors/:id` | Get one monitor with full 60-check history |
+| `PUT` | `/monitors/:id` | Update monitor settings |
+| `DELETE` | `/monitors/:id` | Delete a monitor (no password required) |
+| `POST` | `/monitors/:id/ping` | Manually trigger an immediate ping |
+| `GET` | `/monitors/:id/history` | Get check history (up to 200 records, use `?limit=N`) |
+
+**Create monitor — request body:**
+```json
+{
+  "name": "My API",
+  "url": "https://api.example.com/health",
+  "method": "GET",
+  "interval_mins": 5,
+  "notify_down": true,
+  "notify_up": true
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `name` | string | Yes | Max 100 chars |
+| `url` | string | Yes | Must start with `http://` or `https://` |
+| `method` | string | No | `GET` (default), `HEAD`, or `POST` |
+| `path` | string | No | Appended to URL before pinging |
+| `body` | string | No | JSON body for POST monitors |
+| `interval_mins` | number | No | Default 3, min 0.5 (30s), max 1440 (24h) |
+| `notify_down` | boolean | No | Default `true` |
+| `notify_up` | boolean | No | Default `true` |
+
+</details>
+
+<details>
+<summary>TAP TO EXPAND — Code examples</summary>
+
+**Node.js**
+```javascript
+const BASE = 'https://monitor.giftedtech.co.ke/api/v1';
+const KEY  = 'gm_your_api_key_here';
+
+// List monitors
+const res = await fetch(`${BASE}/monitors`, {
+  headers: { 'X-API-Key': KEY }
+});
+const { monitors } = await res.json();
+console.log(monitors);
+
+// Create a monitor
+const create = await fetch(`${BASE}/monitors`, {
+  method: 'POST',
+  headers: { 'X-API-Key': KEY, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: 'My API', url: 'https://api.example.com', interval_mins: 5 })
+});
+const monitor = await create.json();
+console.log(monitor.id);
+```
+
+**Python**
+```python
+import requests
+
+BASE = 'https://monitor.giftedtech.co.ke/api/v1'
+HEADERS = {'X-API-Key': 'gm_your_api_key_here'}
+
+# List monitors
+monitors = requests.get(f'{BASE}/monitors', headers=HEADERS).json()
+
+# Create a monitor
+new = requests.post(f'{BASE}/monitors', headers=HEADERS, json={
+    'name': 'My API', 'url': 'https://api.example.com', 'interval_mins': 5
+}).json()
+print(new['id'])
+```
+
+**PHP**
+```php
+$base = 'https://monitor.giftedtech.co.ke/api/v1';
+$key  = 'gm_your_api_key_here';
+
+$ch = curl_init("$base/monitors");
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => ["X-API-Key: $key"],
+]);
+$data = json_decode(curl_exec($ch), true);
+print_r($data['monitors']);
+```
+
+**cURL**
+```bash
+# List monitors
+curl https://monitor.giftedtech.co.ke/api/v1/monitors \
+  -H "X-API-Key: gm_your_api_key_here"
+
+# Create a monitor
+curl -X POST https://monitor.giftedtech.co.ke/api/v1/monitors \
+  -H "X-API-Key: gm_your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My API","url":"https://api.example.com","interval_mins":5}'
+
+# Delete a monitor
+curl -X DELETE https://monitor.giftedtech.co.ke/api/v1/monitors/42 \
+  -H "X-API-Key: gm_your_api_key_here"
+```
+
+</details>
+
+<img src='https://i.imgur.com/LyHic3i.gif'/>
+
+---
+
+## 15. INTERNAL API REFERENCE
 
 <details>
 <summary>AUTH — /api/auth</summary>
@@ -530,15 +842,41 @@ Bulk selection is available across three areas. Select items using checkboxes �
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| GET | `/` | Yes | List all monitors for the current user |
-| POST | `/` | Yes | Create a monitor (respects `monitor_limit`) |
-| GET | `/:id` | Yes | Get monitor details + last 60 checks |
-| PUT | `/:id` | Yes | Update monitor settings |
-| DELETE | `/:id` | Yes | Delete a monitor (requires password) |
-| POST | `/:id/ping` | Yes | Manually trigger an immediate ping |
-| POST | `/bulk` | Yes | Bulk action — body: `{ action, ids, password? }` |
+| GET | `/` | JWT | List all monitors for the current user |
+| POST | `/` | JWT | Create a monitor (respects `monitor_limit`) |
+| GET | `/:id` | JWT | Get monitor details + last 60 checks |
+| PUT | `/:id` | JWT | Update monitor settings |
+| DELETE | `/:id` | JWT | Delete a monitor (requires password) |
+| POST | `/:id/ping` | JWT | Manually trigger an immediate ping |
+| POST | `/bulk` | JWT | Bulk action — body: `{ action, ids, password? }` |
 
 **Bulk actions for monitors:** `pause`, `activate`, `delete`
+
+</details>
+
+<details>
+<summary>API KEYS — /api/apikeys</summary>
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/` | JWT | List all your API keys (hashed — plaintext never returned after creation) |
+| POST | `/` | JWT | Create a new API key — body: `{ name }` |
+| DELETE | `/:id` | JWT | Revoke / delete an API key |
+
+</details>
+
+<details>
+<summary>REST API v1 — /api/v1</summary>
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/monitors` | API Key | List all monitors + last 30 checks |
+| POST | `/monitors` | API Key | Create a monitor |
+| GET | `/monitors/:id` | API Key | Get monitor + last 60 checks |
+| PUT | `/monitors/:id` | API Key | Update monitor settings |
+| DELETE | `/monitors/:id` | API Key | Delete a monitor (no password required) |
+| POST | `/monitors/:id/ping` | API Key | Trigger an immediate ping |
+| GET | `/monitors/:id/history` | API Key | Get check history (max 200, `?limit=N`) |
 
 </details>
 
@@ -577,7 +915,7 @@ Bulk selection is available across three areas. Select items using checkboxes �
 
 ---
 
-## 13. DEPLOYMENT
+## 16. DEPLOYMENT
 
 <details>
 <summary>TAP TO EXPAND</summary>
@@ -641,7 +979,7 @@ server {
 
 ---
 
-## 14. IMPORTANT NOTES
+## 17. IMPORTANT NOTES
 
 <details>
 <summary>TAP TO EXPAND</summary>
@@ -676,13 +1014,19 @@ Register your own account immediately after deployment. The first account to com
 - When a monitor returns a non-2xx response, the engine waits 8 seconds and retries once
 - Only if the retry also fails is the monitor marked DOWN and an alert sent
 
+**API key security**
+- API keys are stored as SHA-256 hashes — the plaintext is never retrievable after creation
+- Each key shows only its first 12 characters as a visible prefix in the UI
+- Revoking a key takes effect immediately with no cache delay
+- Keys only grant access to monitor operations — they cannot change account details, passwords, or billing
+
 </details>
 
 <img src='https://i.imgur.com/LyHic3i.gif'/>
 
 ---
 
-## 15. LICENSE
+## 18. LICENSE
 
 MIT — see [LICENSE](LICENSE)
 

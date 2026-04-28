@@ -57,11 +57,22 @@ async function createMongoAdapter(DATABASE_URL) {
     created_at: { type: Date, default: Date.now }
   });
 
+  const ApiKeySchema = new mongoose.Schema({
+    user_id:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    name:       { type: String, required: true },
+    key_hash:   { type: String, unique: true, required: true },
+    key_prefix: { type: String, required: true },
+    last_used:  { type: Date, default: null },
+    is_active:  { type: Boolean, default: true },
+    created_at: { type: Date, default: Date.now }
+  });
+
   const User           = mongoose.models.User           || mongoose.model('User', UserSchema);
   const Otp            = mongoose.models.Otp            || mongoose.model('Otp', OtpSchema);
   const Monitor        = mongoose.models.Monitor        || mongoose.model('Monitor', MonitorSchema);
   const History        = mongoose.models.History        || mongoose.model('History', HistorySchema);
   const ContactMessage = mongoose.models.ContactMessage || mongoose.model('ContactMessage', ContactMessageSchema);
+  const ApiKey         = mongoose.models.ApiKey         || mongoose.model('ApiKey', ApiKeySchema);
 
   function toPlain(doc) {
     if (!doc) return null;
@@ -74,12 +85,11 @@ async function createMongoAdapter(DATABASE_URL) {
     async getUserCount() { return User.countDocuments(); },
 
     async createUser({ username, name, email, whatsapp, passwordHash, isAdmin = false, isSuperAdmin = false }) {
-      return toPlain(await User.create({ username, name, email, whatsapp, password_hash: passwordHash, is_admin: isAdmin, is_superadmin: isSuperAdmin }));
+      return toPlain(await User.create({ username, name, email, whatsapp: whatsapp||'', password_hash: passwordHash, is_admin: isAdmin, is_superadmin: isSuperAdmin }));
     },
 
     async getUserByEmail(email)       { return toPlain(await User.findOne({ email })); },
     async getUserByUsername(username) { return toPlain(await User.findOne({ username })); },
-    async getUserByWhatsapp(whatsapp) { return toPlain(await User.findOne({ whatsapp })); },
     async getUserById(id)             { return toPlain(await User.findById(id)); },
 
     async updateUser(id, fields) { return toPlain(await User.findByIdAndUpdate(id, fields, { new: true })); },
@@ -146,10 +156,10 @@ async function createMongoAdapter(DATABASE_URL) {
     async deleteMonitor(id) { await Monitor.findByIdAndDelete(id); },
 
     async getAllActiveMonitors() {
-      const ms = await Monitor.find({ is_active: true }).populate('user_id', 'name email whatsapp phone');
+      const ms = await Monitor.find({ is_active: true }).populate('user_id', 'name email');
       return ms.map(m => {
         const o = toPlain(m);
-        if (m.user_id) { o.user_name = m.user_id.name; o.user_email = m.user_id.email; o.user_whatsapp = m.user_id.whatsapp; o.user_phone = m.user_id.phone; o.user_id = m.user_id._id.toString(); }
+        if (m.user_id) { o.user_name = m.user_id.name; o.user_email = m.user_id.email; o.user_id = m.user_id._id.toString(); }
         return o;
       });
     },
@@ -184,6 +194,25 @@ async function createMongoAdapter(DATABASE_URL) {
 
     async markContactRead(id) { await ContactMessage.findByIdAndUpdate(id, { is_read: true }); },
     async deleteContactMessage(id) { await ContactMessage.findByIdAndDelete(id); },
+
+    async createApiKey(userId, name, keyHash, keyPrefix) {
+      return toPlain(await ApiKey.create({ user_id: userId, name, key_hash: keyHash, key_prefix: keyPrefix }));
+    },
+    async getUserApiKeys(userId) {
+      return (await ApiKey.find({ user_id: userId, is_active: true }, 'name key_prefix last_used is_active created_at').sort({ created_at: -1 })).map(toPlain);
+    },
+    async getApiKeyByHash(keyHash) {
+      return toPlain(await ApiKey.findOne({ key_hash: keyHash, is_active: true }));
+    },
+    async revokeApiKey(id, userId) {
+      await ApiKey.findOneAndUpdate({ _id: id, user_id: userId }, { is_active: false });
+    },
+    async deleteApiKey(id, userId) {
+      await ApiKey.findOneAndDelete({ _id: id, user_id: userId });
+    },
+    async updateApiKeyLastUsed(id) {
+      await ApiKey.findByIdAndUpdate(id, { last_used: new Date() });
+    },
   };
 }
 

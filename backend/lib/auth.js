@@ -36,6 +36,10 @@ function validatePassword(password) {
   return null;
 }
 
+function hashApiKey(rawKey) {
+  return crypto.createHash('sha256').update(rawKey).digest('hex');
+}
+
 function requireAuth(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
@@ -58,11 +62,32 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+async function requireApiKey(req, res, next) {
+  const rawKey = req.headers['x-api-key'] || req.query.api_key;
+  if (!rawKey) return res.status(401).json({ error: 'API key required. Pass it as X-API-Key header.' });
+  try {
+    const { getDB } = require('./db');
+    const db = getDB();
+    const keyHash = hashApiKey(rawKey);
+    const apiKey = await db.getApiKeyByHash(keyHash);
+    if (!apiKey || !apiKey.is_active) return res.status(401).json({ error: 'Invalid or revoked API key.' });
+    req.userId       = String(apiKey.user_id);
+    req.isAdmin      = false;
+    req.isSuperAdmin = false;
+    req.apiKeyId     = String(apiKey.id);
+    await db.updateApiKeyLastUsed(apiKey.id).catch(() => {});
+    next();
+  } catch (err) {
+    console.error('API key auth error:', err.message);
+    res.status(401).json({ error: 'API key authentication failed.' });
+  }
+}
+
 module.exports = {
   generateToken, generateOtp, otpExpiry,
   signToken, verifyToken,
   signResetToken, verifyResetToken,
   hashPassword, comparePassword,
   sanitize, validateEmail, validatePassword,
-  requireAuth, requireAdmin,
+  requireAuth, requireAdmin, requireApiKey, hashApiKey,
 };

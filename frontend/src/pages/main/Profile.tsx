@@ -1,9 +1,9 @@
 import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { User, Camera, X, ZoomIn, ZoomOut, Bell, Lock, Info, Mail, Loader2 } from "lucide-react";
+import { User, Camera, X, ZoomIn, ZoomOut, Bell, Lock, Info, Mail, Loader2, Key, Plus, Trash2, Copy, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import Cropper from "react-easy-crop";
 import { AnimatePresence, motion } from "framer-motion";
 import clsx from "clsx";
@@ -19,10 +19,182 @@ const TABS = [
   { id: "profile",       label: "Profile",       icon: User },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "security",      label: "Security",      icon: Lock },
+  { id: "apikeys",       label: "API Keys",      icon: Key },
   { id: "account",       label: "Account",       icon: Info },
 ] as const;
 
 type TabId = typeof TABS[number]["id"];
+
+interface ApiKey {
+  id: string;
+  name: string;
+  key_prefix: string;
+  last_used: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+function ApiKeysTab() {
+  const qc = useQueryClient();
+  const [newKeyName, setNewKeyName] = useState("");
+  const [createdKey, setCreatedKey] = useState<{ key: string; name: string } | null>(null);
+  const [showKey, setShowKey] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const { data: keys = [], isLoading } = useQuery<ApiKey[]>({
+    queryKey: ["apikeys"],
+    queryFn: () => api.get("/apikeys").then(r => r.data),
+  });
+
+  const handleCreate = async () => {
+    if (!newKeyName.trim()) { toast.error("Enter a name for the API key"); return; }
+    setCreating(true);
+    try {
+      const res = await api.post("/apikeys", { name: newKeyName.trim() });
+      setCreatedKey({ key: res.data.key, name: res.data.name });
+      setNewKeyName("");
+      setShowKey(true);
+      qc.invalidateQueries({ queryKey: ["apikeys"] });
+      toast.success("API key created — copy it now!");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      toast.error(e.response?.data?.error || "Failed to create API key");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await api.delete(`/apikeys/${id}`);
+      qc.invalidateQueries({ queryKey: ["apikeys"] });
+      toast.success("API key deleted");
+    } catch {
+      toast.error("Failed to delete API key");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const copyKey = () => {
+    if (!createdKey) return;
+    navigator.clipboard.writeText(createdKey.key).then(() => toast.success("Key copied!"));
+  };
+
+  return (
+    <div className="bg-background border border-line rounded-xl p-5 space-y-5">
+      <div>
+        <h2 className="font-semibold text-sm">API Keys</h2>
+        <p className="text-xs text-muted mt-0.5">
+          Use API keys to access monitor operations programmatically.{" "}
+          <a href="/docs" className="text-emerald-500 hover:underline">View API docs →</a>
+        </p>
+      </div>
+
+      {/* New key created — show once */}
+      {createdKey && (
+        <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl space-y-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Copy your new key — it won't be shown again</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">{createdKey.name}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 font-mono text-xs bg-background border border-line rounded-lg px-3 py-2 overflow-x-auto">
+              {showKey ? createdKey.key : "•".repeat(32)}
+            </div>
+            <button
+              onClick={() => setShowKey(s => !s)}
+              className="btn h-9 w-9 rounded-lg bg-foreground text-muted hover:text-main shrink-0"
+              title={showKey ? "Hide" : "Show"}
+            >
+              {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+            <button
+              onClick={copyKey}
+              className="btn h-9 w-9 rounded-lg bg-emerald-500 text-white shrink-0"
+              title="Copy key"
+            >
+              <Copy size={14} />
+            </button>
+          </div>
+          <button
+            onClick={() => { setCreatedKey(null); setShowKey(false); }}
+            className="text-xs text-muted hover:text-main underline"
+          >
+            I've copied it, dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Create new key */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted">Create a new key</p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newKeyName}
+            onChange={e => setNewKeyName(e.target.value)}
+            placeholder="Key name (e.g. My Server, CI Pipeline)"
+            maxLength={100}
+            onKeyDown={e => { if (e.key === "Enter") handleCreate(); }}
+            className="flex-1 h-10 rounded-xl border border-line px-3 text-sm bg-background focus:border-emerald-500 outline-none transition-colors"
+          />
+          <button
+            onClick={handleCreate}
+            disabled={creating || !newKeyName.trim()}
+            className="btn h-10 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium gap-2 disabled:opacity-50 shrink-0"
+          >
+            {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            Create
+          </button>
+        </div>
+        <p className="text-xs text-muted">Maximum 10 keys per account</p>
+      </div>
+
+      {/* Key list */}
+      <div className="space-y-2">
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map(i => <div key={i} className="h-14 bg-foreground rounded-xl animate-pulse" />)}
+          </div>
+        ) : keys.length === 0 ? (
+          <div className="text-center py-8 border border-dashed border-line rounded-xl">
+            <Key size={24} className="text-muted mx-auto mb-2" />
+            <p className="text-sm text-muted">No API keys yet</p>
+          </div>
+        ) : (
+          keys.map(k => (
+            <div key={k.id} className="flex items-center gap-3 p-3 border border-line rounded-xl">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{k.name}</p>
+                <p className="text-xs text-muted font-mono">
+                  {k.key_prefix}••••••••••••
+                  <span className="ml-2 not-mono">
+                    Created {formatDate(k.created_at)}
+                    {k.last_used ? ` · Last used ${formatDate(k.last_used)}` : " · Never used"}
+                  </span>
+                </p>
+              </div>
+              <button
+                onClick={() => handleDelete(k.id)}
+                disabled={deletingId === k.id}
+                className="btn h-8 w-8 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 shrink-0 disabled:opacity-50"
+                title="Delete key"
+              >
+                {deletingId === k.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Profile() {
   const { user, setUser, setAuth } = useAuthStore();
@@ -131,6 +303,9 @@ export default function Profile() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // suppress unused warning — setAuth may be used later
+  void setAuth;
+
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto space-y-5">
@@ -141,7 +316,7 @@ export default function Profile() {
         </div>
 
         {/* Tab bar */}
-        <div className="flex gap-1 bg-foreground rounded-xl p-1">
+        <div className="flex gap-1 bg-foreground rounded-xl p-1 overflow-x-auto">
           {TABS.map(t => {
             const Icon = t.icon;
             return (
@@ -149,7 +324,7 @@ export default function Profile() {
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={clsx(
-                  "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all",
+                  "flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap",
                   tab === t.id
                     ? "bg-background text-main shadow-sm"
                     : "text-muted hover:text-main"
@@ -298,6 +473,9 @@ export default function Profile() {
             </form>
           </div>
         )}
+
+        {/* Tab: API Keys */}
+        {tab === "apikeys" && <ApiKeysTab />}
 
         {/* Tab: Account */}
         {tab === "account" && (
