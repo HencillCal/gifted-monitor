@@ -13,6 +13,8 @@ export default function VerifyOtp() {
   const [searchParams] = useSearchParams();
   const { setAuth, setUser } = useAuthStore();
 
+  const bundleToken = searchParams.get("t") || "";
+
   const urlEmail = searchParams.get("email") || "";
   const urlToken = searchParams.get("token") || "";
   const urlType  = searchParams.get("type")  || "";
@@ -22,13 +24,49 @@ export default function VerifyOtp() {
   const stateEmail = state?.email || "";
   const stateType  = state?.type  || "signup";
 
+  const hasBundle     = !!bundleToken;
   const hasLinkParams = !!(urlEmail && urlToken && urlType);
+  const isLinkFlow    = hasBundle || hasLinkParams;
+
   const email = urlEmail || stateEmail;
   const type  = urlType  || stateType;
 
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus]   = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
-  const [resending, setResending] = useState(false);
+  const [resendEmail, setResendEmail] = useState(email);
+  const [resendType,  setResendType]  = useState(type);
+  const [resending, setResending]     = useState(false);
+
+  const verifyBundle = async () => {
+    setStatus("loading");
+    try {
+      const res = await api.post("/auth/verify-bundle", { bundle: bundleToken });
+      setStatus("success");
+      const data = res.data;
+      if (data.token && data.user) {
+        setAuth(data.token, data.user);
+        if (data.user) {
+          if (data.message?.toLowerCase().includes("email")) {
+            toast.success(data.message || "Email updated successfully!");
+            setTimeout(() => navigate("/profile", { replace: true }), 1200);
+          } else {
+            toast.success(data.message || "Account verified! Welcome aboard.");
+            setTimeout(() => navigate("/dashboard", { replace: true }), 1200);
+          }
+        }
+      } else if (data.resetToken) {
+        toast.success(data.message || "Verified! Set your new password.");
+        setTimeout(() => navigate("/reset-password", { state: { resetToken: data.resetToken }, replace: true }), 1200);
+      } else {
+        toast.success(data.message || "Verified!");
+        setTimeout(() => navigate("/dashboard", { replace: true }), 1200);
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setStatus("error");
+      setErrorMsg(error.response?.data?.error || "Verification failed. The link may have expired.");
+    }
+  };
 
   const verifyLink = async () => {
     if (!urlEmail || !urlToken || !urlType) return;
@@ -62,15 +100,18 @@ export default function VerifyOtp() {
   };
 
   useEffect(() => {
-    if (hasLinkParams) verifyLink();
+    if (hasBundle) verifyBundle();
+    else if (hasLinkParams) verifyLink();
   }, []);
 
   const handleResend = async () => {
-    if (!email || !type) { toast.error("Unable to resend — missing info."); return; }
-    if (type === "email_change") { toast.info("Please request a new email change from your profile."); navigate("/profile", { replace: true }); return; }
+    const resEmail = resendEmail || email;
+    const resType  = resendType  || type;
+    if (!resEmail || !resType) { toast.error("Unable to resend — missing info."); return; }
+    if (resType === "email_change") { toast.info("Please request a new email change from your profile."); navigate("/profile", { replace: true }); return; }
     setResending(true);
     try {
-      const res = await api.post("/auth/resend-otp", { email, type });
+      const res = await api.post("/auth/resend-otp", { email: resEmail, type: resType });
       toast.success(res.data.message);
       setStatus("idle");
       setErrorMsg("");
@@ -82,14 +123,15 @@ export default function VerifyOtp() {
     }
   };
 
-  const typeLabel = type === "reset" ? "reset" : type === "email_change" ? "email change confirmation" : "verification";
-  const successMsg = type === "reset" ? "Verified! Redirecting to reset password…" : type === "email_change" ? "Email updated! Redirecting…" : "Account verified! Redirecting…";
+  const displayType = hasBundle ? stateType : type;
+  const typeLabel = displayType === "reset" ? "reset" : displayType === "email_change" ? "email change confirmation" : "verification";
+  const successMsg = displayType === "reset" ? "Verified! Redirecting to reset password…" : displayType === "email_change" ? "Email updated! Redirecting…" : "Account verified! Redirecting…";
 
-  if (hasLinkParams) {
+  if (isLinkFlow) {
     return (
       <AuthLayout
-        title={type === "email_change" ? "Confirming email change" : type === "reset" ? "Verifying reset link" : "Verifying your account"}
-        subtitle={urlEmail ? `For ${urlEmail}` : "Please wait a moment…"}
+        title={displayType === "email_change" ? "Confirming email change" : displayType === "reset" ? "Verifying reset link" : "Verifying your account"}
+        subtitle="Please wait a moment…"
         icon={status === "success" ? <CheckCircle size={24} /> : status === "error" ? <XCircle size={24} /> : <Loader2 size={24} className="animate-spin" />}
         iconBg={status === "success" ? "bg-emerald-500" : status === "error" ? "bg-red-500" : "bg-blue-500"}
       >
@@ -113,7 +155,7 @@ export default function VerifyOtp() {
                 <span>{errorMsg}</span>
               </div>
               <p className="text-xs text-muted text-center">The link may have expired or already been used.</p>
-              {type !== "email_change" && (
+              {displayType !== "email_change" && (
                 <ButtonWithLoader
                   onClick={handleResend}
                   loading={resending}
@@ -122,7 +164,7 @@ export default function VerifyOtp() {
                   className="w-full h-11 rounded-xl btn-primary text-sm"
                 />
               )}
-              {type === "email_change" && (
+              {displayType === "email_change" && (
                 <button onClick={() => navigate("/profile")} className="w-full h-11 rounded-xl btn btn-primary text-sm">
                   Back to Profile
                 </button>
@@ -147,7 +189,7 @@ export default function VerifyOtp() {
     >
       <div className="space-y-5">
         <div className="p-4 bg-secondary border border-line rounded-xl text-sm text-center text-muted">
-          Click the link in your email to {type === "reset" ? "reset your password" : "verify your account"}.
+          Click the link in your email to {displayType === "reset" ? "reset your password" : "verify your account"}.
         </div>
         <div className="text-center">
           <p className="text-sm text-muted mb-3">Didn't receive the link?</p>
