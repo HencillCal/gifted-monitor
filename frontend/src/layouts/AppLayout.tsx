@@ -211,7 +211,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </div>
 
               {/* Nav */}
-              <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+              <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto overscroll-contain">
                 {userNav.map(n => <NavLink key={n.to} {...n} onClick={() => setMobileOpen(false)} />)}
 
                 {isAdmin && (
