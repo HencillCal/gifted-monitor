@@ -93,22 +93,28 @@ async function createPostgresAdapter(DATABASE_URL) {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_email VARCHAR(150)`).catch(() => {});
   await pool.query(`UPDATE users SET notify_down=true, notify_up=true WHERE notify_down IS NULL OR notify_up IS NULL`).catch(() => {});
   await pool.query(`ALTER TABLE otp_codes ALTER COLUMN code TYPE TEXT`).catch(() => {});
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_ip VARCHAR(45)`).catch(() => {});
+  await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS msg_status VARCHAR(20) DEFAULT 'new'`).catch(() => {});
+  await pool.query(`UPDATE contact_messages SET msg_status='read' WHERE is_read=true AND msg_status='new'`).catch(() => {});
+  await pool.query(`ALTER TABLE monitors ADD COLUMN IF NOT EXISTS incident_start TIMESTAMPTZ`).catch(() => {});
+  await pool.query(`ALTER TABLE monitors ADD COLUMN IF NOT EXISTS last_reminder_at TIMESTAMPTZ`).catch(() => {});
 
   return {
     async getUserCount() {
       const r = await pool.query('SELECT COUNT(*) FROM users');
       return parseInt(r.rows[0].count);
     },
-    async createUser({ username, name, email, whatsapp, passwordHash, isAdmin = false, isSuperAdmin = false }) {
+    async createUser({ username, name, email, whatsapp, passwordHash, isAdmin = false, isSuperAdmin = false, registrationIp = null }) {
       const r = await pool.query(
-        'INSERT INTO users (username,name,email,whatsapp,password_hash,is_admin,is_superadmin) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
-        [username, name, email, whatsapp, passwordHash, isAdmin, isSuperAdmin]
+        'INSERT INTO users (username,name,email,whatsapp,password_hash,is_admin,is_superadmin,registration_ip) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+        [username, name, email, whatsapp, passwordHash, isAdmin, isSuperAdmin, registrationIp]
       );
       return r.rows[0];
     },
     async getUserByEmail(email) { const r = await pool.query('SELECT * FROM users WHERE email=$1', [email]); return r.rows[0] || null; },
     async getUserByUsername(username) { const r = await pool.query('SELECT * FROM users WHERE username=$1', [username]); return r.rows[0] || null; },
     async getUserById(id) { const r = await pool.query('SELECT * FROM users WHERE id=$1', [id]); return r.rows[0] || null; },
+    async getUserByRegistrationIp(ip) { const r = await pool.query('SELECT id,email FROM users WHERE registration_ip=$1 LIMIT 1', [ip]); return r.rows[0] || null; },
     async updateUser(id, fields) {
       const keys = Object.keys(fields), vals = Object.values(fields);
       const set = keys.map((k, i) => `${k}=$${i+1}`).join(', ');
@@ -149,9 +155,12 @@ async function createPostgresAdapter(DATABASE_URL) {
       return r.rows[0];
     },
     async getUserMonitors(userId) { const r = await pool.query('SELECT * FROM monitors WHERE user_id=$1 ORDER BY created_at DESC', [userId]); return r.rows; },
-    async getAllMonitors({ search = '', page = 1, limit = 20 } = {}) {
+    async getAllMonitors({ search = '', page = 1, limit = 20, sortBy = 'created_at', sortDir = 'desc' } = {}) {
       const offset = (page-1)*limit, like = `%${search}%`;
-      const r = await pool.query(`SELECT m.*,u.name as user_name,u.email as user_email,u.username as user_username FROM monitors m JOIN users u ON m.user_id=u.id WHERE m.name ILIKE $1 OR m.url ILIKE $1 OR u.name ILIKE $1 OR u.email ILIKE $1 ORDER BY m.created_at DESC LIMIT $2 OFFSET $3`, [like, limit, offset]);
+      const SAFE_COLS = { name: 'm.name', url: 'm.url', status: 'm.last_status', uptime: 'm.uptime_pct', last_checked: 'm.last_checked', interval: 'm.interval_mins', created_at: 'm.created_at' };
+      const col = SAFE_COLS[sortBy] || 'm.created_at';
+      const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
+      const r = await pool.query(`SELECT m.*,u.name as user_name,u.email as user_email,u.username as user_username FROM monitors m JOIN users u ON m.user_id=u.id WHERE m.name ILIKE $1 OR m.url ILIKE $1 OR u.name ILIKE $1 OR u.email ILIKE $1 ORDER BY ${col} ${dir} NULLS LAST LIMIT $2 OFFSET $3`, [like, limit, offset]);
       const cnt = await pool.query(`SELECT COUNT(*) FROM monitors m JOIN users u ON m.user_id=u.id WHERE m.name ILIKE $1 OR m.url ILIKE $1 OR u.name ILIKE $1 OR u.email ILIKE $1`, [like]);
       return { monitors: r.rows, total: parseInt(cnt.rows[0].count) };
     },
@@ -185,14 +194,19 @@ async function createPostgresAdapter(DATABASE_URL) {
       const r = await pool.query('INSERT INTO contact_messages (name,email,whatsapp,subject,message) VALUES ($1,$2,$3,$4,$5) RETURNING *', [name, email, whatsapp||'', subject, message]);
       return r.rows[0];
     },
-    async getContactMessages({ page = 1, limit = 10 } = {}) {
+    async getContactMessages({ page = 1, limit = 10, tab = 'new' } = {}) {
       const offset = (page-1)*limit;
-      const r = await pool.query('SELECT * FROM contact_messages ORDER BY created_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
-      const cnt = await pool.query('SELECT COUNT(*) FROM contact_messages');
-      const unread = await pool.query('SELECT COUNT(*) FROM contact_messages WHERE is_read=false');
-      return { messages: r.rows, total: parseInt(cnt.rows[0].count), unread: parseInt(unread.rows[0].count) };
+      const safeTab = ['new','read','draft'].includes(tab) ? tab : 'new';
+      const r = await pool.query('SELECT * FROM contact_messages WHERE msg_status=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3', [safeTab, limit, offset]);
+      const cnt = await pool.query('SELECT COUNT(*) FROM contact_messages WHERE msg_status=$1', [safeTab]);
+      const allCounts = await pool.query(`SELECT msg_status, COUNT(*) as c FROM contact_messages GROUP BY msg_status`);
+      const counts = { new: 0, read: 0, draft: 0 };
+      for (const row of allCounts.rows) { if (counts.hasOwnProperty(row.msg_status)) counts[row.msg_status] = parseInt(row.c); }
+      return { messages: r.rows, total: parseInt(cnt.rows[0].count), counts };
     },
-    async markContactRead(id) { await pool.query('UPDATE contact_messages SET is_read=true WHERE id=$1', [id]); },
+    async markContactRead(id) { await pool.query("UPDATE contact_messages SET is_read=true, msg_status='read' WHERE id=$1", [id]); },
+    async markContactDraft(id) { await pool.query("UPDATE contact_messages SET is_read=true, msg_status='draft' WHERE id=$1", [id]); },
+    async markContactNew(id) { await pool.query("UPDATE contact_messages SET is_read=false, msg_status='new' WHERE id=$1", [id]); },
     async deleteContactMessage(id) { await pool.query('DELETE FROM contact_messages WHERE id=$1', [id]); },
 
     async createApiKey(userId, name, keyHash, keyPrefix) {
