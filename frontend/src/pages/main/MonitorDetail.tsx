@@ -36,7 +36,7 @@ export default function MonitorDetail() {
     queryKey: ["monitor", id],
     queryFn: () => api.get(`/monitors/${id}`).then(r => r.data),
     enabled: !!id,
-    refetchInterval: 3000,
+    refetchInterval: 5000,
   });
 
   const pingMutation = useMutation({
