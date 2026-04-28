@@ -30,7 +30,7 @@ export default function Breadcrumb({ crumbs }: BreadcrumbProps) {
                 {crumb.label}
               </Link>
             ) : (
-              <span className={isLast ? "text-main font-medium truncate max-w-[180px]" : "truncate max-w-[180px]"}>
+              <span className={isLast ? "text-emerald-500 font-semibold truncate max-w-[180px]" : "truncate max-w-[180px]"}>
                 {crumb.label}
               </span>
             )}
