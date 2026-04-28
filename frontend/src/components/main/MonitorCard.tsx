@@ -33,10 +33,10 @@ export default function MonitorCard({ monitor, selected }: MonitorCardProps) {
             <button
               type="button"
               onClick={() => window.open(fullUrl, "_blank", "noopener,noreferrer")}
-              className="text-muted hover:text-main shrink-0 cursor-pointer"
+              className="text-muted hover:text-emerald-500 shrink-0 cursor-pointer p-1.5 -m-1.5 rounded-lg hover:bg-foreground transition-colors"
               title="Open URL in new tab"
             >
-              <ExternalLink size={11} />
+              <ExternalLink size={12} />
             </button>
           </div>
         </div>
