@@ -265,6 +265,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <footer className="mx-4 lg:mx-6 mb-4 py-2.5 px-4 border border-line rounded-2xl">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+            <a href="/api-docs" className="text-[11px] text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium">API Docs</a>
             <a href="/about"   className="text-[11px] text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium">About</a>
             <a href="/terms"   className="text-[11px] text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium">Terms</a>
             <a href="/privacy" className="text-[11px] text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium">Privacy</a>
