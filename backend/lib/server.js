@@ -2,12 +2,24 @@ const path = require("path");
 const fs = require("fs");
 const express = require("express");
 const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const config = require("../config");
 
 const app = express();
 app.set("trust proxy", 1);
+app.set("json spaces", 2);
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+
+// ─── Global rate limiter (all routes) ────────────────────────────────────────
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: { error: "Too many requests from this IP, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path.startsWith('/assets') || req.path === '/favicon.ico',
+}));
 
 // ─── CORS ────────────────────────────────────────────────────────────
 app.use((req, res, next) => {
