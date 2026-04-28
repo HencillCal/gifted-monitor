@@ -77,7 +77,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-sm">Recently added monitors</h2>
             {monitors && monitors.length > 0 && (
-              <Link to="/monitors" className="text-xs text-muted hover:text-main transition-colors">View all →</Link>
+              <Link to="/monitors" className="btn btn-primary h-8 px-3 rounded-lg text-xs gap-1">View all monitors →</Link>
             )}
           </div>
 
