@@ -134,7 +134,7 @@ export default function Home() {
       </section>
 
       {/* ── Features ─────────────────────────────────────────────────────── */}
-      <section id="features" className="py-16 px-4">
+      <section id="features" className="py-16 px-4 overflow-hidden">
         <div className="main">
           <div className="text-center mb-12">
             <h2 data-aos="zoom-in" className="text-3xl md:text-4xl font-bold font-outfit mb-3">Everything You Need to Stay Online</h2>
@@ -161,7 +161,7 @@ export default function Home() {
       </section>
 
       {/* ── How It Works ─────────────────────────────────────────────────── */}
-      <section id="how-it-works" className="py-16 px-4 bg-secondary">
+      <section id="how-it-works" className="py-16 px-4 bg-secondary overflow-hidden">
         <div className="main">
           <div className="text-center mb-12">
             <h2 data-aos="fade-right" className="text-3xl md:text-4xl font-bold font-outfit mb-3">Up and Running in Minutes</h2>
@@ -196,7 +196,7 @@ export default function Home() {
       </section>
 
       {/* ── Stats ─────────────────────────────────────────────────────────── */}
-      <section className="py-16 px-4">
+      <section className="py-16 px-4 overflow-hidden">
         <div className="main">
           <div className="grid md:grid-cols-3 gap-6 text-center">
             {[
