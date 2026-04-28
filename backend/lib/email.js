@@ -12,8 +12,6 @@ function getSenders() {
   ].filter(Boolean);
 }
 
-let _rrIndex = 0;
-
 async function sendMail({ to, subject, html, text }) {
   const senders = getSenders();
   if (!senders.length) {
@@ -21,14 +19,8 @@ async function sendMail({ to, subject, html, text }) {
     return;
   }
 
-  // Try each sender in round-robin order, starting from current index
-  const startIdx = _rrIndex % senders.length;
-  _rrIndex++;
-
-  const order = [];
-  for (let i = 0; i < senders.length; i++) {
-    order.push(senders[(startIdx + i) % senders.length]);
-  }
+  // Always start from sender #1; only fall through to the next on rate-limit / quota errors
+  const order = [...senders];
 
   let lastError = null;
   for (const sender of order) {
