@@ -3,11 +3,22 @@
  * Scope: Monitor operations only (no account/auth operations)
  */
 const router = require('express').Router();
+const rateLimit = require('express-rate-limit');
 const { getDB } = require('../lib/db');
 const { requireApiKey, sanitize } = require('../lib/auth');
 const { pingMonitor } = require('../lib/ping');
 const config = require('../config');
 
+// v1 API rate limiter: 60 requests per minute per IP+key combination
+const v1Limiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { error: 'API rate limit exceeded. Max 60 requests per minute.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.use(v1Limiter);
 router.use(requireApiKey);
 
 // GET /api/v1/monitors — list all monitors for the key owner
@@ -142,6 +153,30 @@ router.post('/monitors/:id/ping', async (req, res) => {
   } catch (err) {
     console.error('v1 trigger ping:', err.message);
     res.status(500).json({ error: 'Failed to trigger ping' });
+  }
+});
+
+// PATCH /api/v1/monitors/:id/notifications — update notification preferences
+router.patch('/monitors/:id/notifications', async (req, res) => {
+  try {
+    const db = getDB();
+    const monitor = await db.getMonitor(req.params.id);
+    if (!monitor) return res.status(404).json({ error: 'Monitor not found' });
+    if (String(monitor.user_id) !== String(req.userId)) return res.status(403).json({ error: 'Forbidden' });
+
+    const { notify_down, notify_up } = req.body;
+    if (notify_down === undefined && notify_up === undefined)
+      return res.status(400).json({ error: 'Provide at least one of: notify_down, notify_up' });
+
+    const updates = {};
+    if (notify_down !== undefined) updates.notify_down = notify_down !== false && notify_down !== 'false';
+    if (notify_up   !== undefined) updates.notify_up   = notify_up   !== false && notify_up   !== 'false';
+
+    const updated = await db.updateMonitor(req.params.id, updates);
+    res.json({ id: updated.id, notify_down: updated.notify_down, notify_up: updated.notify_up });
+  } catch (err) {
+    console.error('v1 update notifications:', err.message);
+    res.status(500).json({ error: 'Failed to update notification preferences' });
   }
 });
 
