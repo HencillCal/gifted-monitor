@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Search, Shield, ShieldOff, Trash2, UserCheck, UserX, AlertCircle, Pencil, Monitor, KeyRound, Pause, Play, RefreshCw, Camera, X, ZoomIn, ZoomOut, ExternalLink, ArrowUpDown } from "lucide-react";
+import { Search, Shield, ShieldOff, Trash2, UserCheck, UserX, AlertCircle, Pencil, Monitor, KeyRound, Pause, Play, RefreshCw, Camera, X, ZoomIn, ZoomOut, ExternalLink, ArrowUpDown, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import Cropper from "react-easy-crop";
 import { AppLayout } from "@/layouts";
@@ -9,6 +9,7 @@ import { Modal, ButtonWithLoader, InputWithoutIcon, InputCheck, Breadcrumb } fro
 import { StatusBadge } from "@/components/main";
 import { formatDate } from "@/helpers/formatDate";
 import type { User, PaginatedUsers } from "@/types";
+import { useAuthStore } from "@/store";
 import api from "@/config/api";
 import getCroppedImg from "@/helpers/cropImage";
 
@@ -34,6 +35,16 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 
 export default function AdminUsers() {
   const qc = useQueryClient();
+  const { user: currentUser } = useAuthStore();
+  const isSuperAdmin = currentUser?.is_superadmin ?? false;
+
+  const canManage = (targetUser: User): boolean => {
+    if (String(targetUser.id) === String(currentUser?.id)) return false;
+    if (targetUser.is_superadmin) return false;
+    if (targetUser.is_admin && !isSuperAdmin) return false;
+    return true;
+  };
+
   const [search, setSearch]               = useState("");
   const [page, setPage]                   = useState(1);
   const [sort, setSort]                   = useState<SortKey>("newest");
@@ -320,32 +331,54 @@ export default function AdminUsers() {
                 </div>
                 {/* Row 2: action buttons */}
                 <div className="flex gap-1.5 flex-wrap pl-1">
-                  <button onClick={() => openEdit(user)} title="Edit user" className="btn h-8 px-3 rounded-lg bg-foreground text-muted hover:text-main text-xs gap-1.5">
+                  {!canManage(user) && (
+                    <span title="Superadmin only" className="btn h-8 px-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-500 text-[10px] gap-1 cursor-default">
+                      <Lock size={10} /> Superadmin only
+                    </span>
+                  )}
+                  <button
+                    onClick={() => canManage(user) && openEdit(user)}
+                    disabled={!canManage(user)}
+                    title={canManage(user) ? "Edit user" : "Superadmin only"}
+                    className="btn h-8 px-3 rounded-lg bg-foreground text-muted hover:text-main text-xs gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
                     <Pencil size={12} /> <span className="sm:inline hidden">Edit</span>
                   </button>
-                  <button onClick={() => { setResetPwUser(user); setNewPassword(""); }} title="Reset password" className="btn h-8 px-3 rounded-lg bg-foreground text-muted hover:text-amber-500 text-xs gap-1.5">
+                  <button
+                    onClick={() => { if (canManage(user)) { setResetPwUser(user); setNewPassword(""); } }}
+                    disabled={!canManage(user)}
+                    title={canManage(user) ? "Reset password" : "Superadmin only"}
+                    className="btn h-8 px-3 rounded-lg bg-foreground text-muted hover:text-amber-500 text-xs gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
                     <KeyRound size={12} /> <span className="sm:inline hidden">Password</span>
                   </button>
                   <button onClick={() => setMonitorsUser(user)} title="View monitors" className="btn h-8 px-3 rounded-lg bg-foreground text-muted hover:text-main text-xs gap-1.5">
                     <Monitor size={12} /> <span className="sm:inline hidden">Monitors</span>
                   </button>
                   <button
-                    onClick={() => patchMutation.mutate({ id: user.id, is_admin: !user.is_admin })}
-                    title={user.is_admin ? "Remove admin" : "Make admin"}
-                    className={`btn h-8 px-3 rounded-lg text-xs gap-1.5 ${user.is_admin ? "bg-blue-100 dark:bg-blue-900/30 text-blue-500" : "bg-foreground text-muted hover:text-main"}`}
+                    onClick={() => canManage(user) && patchMutation.mutate({ id: user.id, is_admin: !user.is_admin })}
+                    disabled={!canManage(user)}
+                    title={!canManage(user) ? "Superadmin only" : user.is_admin ? "Remove admin" : "Make admin"}
+                    className={`btn h-8 px-3 rounded-lg text-xs gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed ${user.is_admin ? "bg-blue-100 dark:bg-blue-900/30 text-blue-500" : "bg-foreground text-muted hover:text-main"}`}
                   >
                     {user.is_admin ? <ShieldOff size={12} /> : <Shield size={12} />}
                     <span className="sm:inline hidden">{user.is_admin ? "Unadmin" : "Admin"}</span>
                   </button>
                   <button
-                    onClick={() => patchMutation.mutate({ id: user.id, is_disabled: !user.is_disabled })}
-                    title={user.is_disabled ? "Enable account" : "Disable account"}
-                    className={`btn h-8 px-3 rounded-lg text-xs gap-1.5 ${user.is_disabled ? "bg-red-100 dark:bg-red-900/30 text-red-500" : "bg-foreground text-muted"}`}
+                    onClick={() => canManage(user) && patchMutation.mutate({ id: user.id, is_disabled: !user.is_disabled })}
+                    disabled={!canManage(user)}
+                    title={!canManage(user) ? "Superadmin only" : user.is_disabled ? "Enable account" : "Disable account"}
+                    className={`btn h-8 px-3 rounded-lg text-xs gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed ${user.is_disabled ? "bg-red-100 dark:bg-red-900/30 text-red-500" : "bg-foreground text-muted"}`}
                   >
                     {user.is_disabled ? <UserCheck size={12} /> : <UserX size={12} />}
                     <span className="sm:inline hidden">{user.is_disabled ? "Enable" : "Disable"}</span>
                   </button>
-                  <button onClick={() => setDeleteTarget(user)} title="Delete user" className="btn h-8 px-3 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-500 text-xs gap-1.5 ml-auto">
+                  <button
+                    onClick={() => canManage(user) && setDeleteTarget(user)}
+                    disabled={!canManage(user)}
+                    title={canManage(user) ? "Delete user" : "Superadmin only"}
+                    className="btn h-8 px-3 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-500 text-xs gap-1.5 ml-auto disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
                     <Trash2 size={12} /> <span className="sm:inline hidden">Delete</span>
                   </button>
                 </div>
