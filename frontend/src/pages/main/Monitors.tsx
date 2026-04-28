@@ -25,7 +25,7 @@ export default function Monitors() {
   const { data: monitors, isLoading, isFetching } = useQuery<Monitor[]>({
     queryKey: ["monitors"],
     queryFn: () => api.get("/monitors").then(r => r.data),
-    refetchInterval: 3000,
+    refetchInterval: 5000,
   });
 
   const filtered = (monitors ?? []).filter(m => {
