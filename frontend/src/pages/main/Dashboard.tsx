@@ -29,7 +29,7 @@ export default function Dashboard() {
   const { data: monitors, isLoading, isFetching } = useQuery<Monitor[]>({
     queryKey: ["monitors"],
     queryFn: () => api.get("/monitors").then(r => r.data),
-    refetchInterval: 3000,
+    refetchInterval: 5000,
   });
 
   const up    = monitors?.filter(m => m.last_status === "up").length ?? 0;
