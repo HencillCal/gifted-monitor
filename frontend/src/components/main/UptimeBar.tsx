@@ -15,9 +15,10 @@ function formatCheckedAt(iso: string) {
 export default function UptimeBar({ history, maxBars = 30 }: UptimeBarProps) {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
 
-  // History arrives DESC (newest first). Reverse so LEFT = oldest, RIGHT = newest (standard convention).
-  const recent = history.slice(0, maxBars).reverse();
-  // Pad nulls at the START (left) = unfilled old time slots (no data yet)
+  // History arrives from the API in ASC order (oldest first, newest last).
+  // Take the most-recent maxBars entries — they are still in oldest→newest order.
+  // Pad nulls at the START (left side) for unfilled old time slots.
+  const recent = history.slice(-maxBars);
   const padded: (CheckHistory | null)[] = [
     ...Array(Math.max(0, maxBars - recent.length)).fill(null),
     ...recent,
@@ -42,7 +43,7 @@ export default function UptimeBar({ history, maxBars = 30 }: UptimeBarProps) {
               className={clsx(
                 "h-5 rounded-[2px] transition-all duration-150 cursor-default",
                 activeIdx === i ? "scale-y-125 origin-bottom" : "",
-                !h             && "bg-gray-200 dark:bg-foreground",
+                !h                   && "bg-gray-200 dark:bg-foreground",
                 h?.status === "up"   && "bg-emerald-500",
                 h?.status === "down" && "bg-red-500",
               )}
@@ -54,8 +55,8 @@ export default function UptimeBar({ history, maxBars = 30 }: UptimeBarProps) {
                   "absolute bottom-full mb-2 z-50 pointer-events-none",
                   "bg-gray-900 text-white text-[10px] leading-tight rounded-lg px-2.5 py-1.5 shadow-xl",
                   "min-w-[110px] whitespace-nowrap",
-                  isLeft  ? "left-0"            : "",
-                  isRight ? "right-0"           : "",
+                  isLeft  ? "left-0"  : "",
+                  isRight ? "right-0" : "",
                   !isLeft && !isRight ? "left-1/2 -translate-x-1/2" : "",
                 )}
               >
@@ -78,8 +79,8 @@ export default function UptimeBar({ history, maxBars = 30 }: UptimeBarProps) {
                 <div
                   className={clsx(
                     "absolute top-full border-4 border-transparent border-t-gray-900",
-                    isLeft  ? "left-3"         : "",
-                    isRight ? "right-3"        : "",
+                    isLeft  ? "left-3"  : "",
+                    isRight ? "right-3" : "",
                     !isLeft && !isRight ? "left-1/2 -translate-x-1/2" : "",
                   )}
                 />
