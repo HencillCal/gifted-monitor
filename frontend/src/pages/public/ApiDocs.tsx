@@ -4,7 +4,7 @@ import { Key, ChevronDown, ChevronRight, Copy, CheckCircle, Activity, Settings, 
 import { toast } from "sonner";
 
 // ── Copy button ───────────────────────────────────────────────────────────────
-function CopyButton({ text, light }: { text: string; light?: boolean }) {
+function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
     navigator.clipboard.writeText(text).then(() => {
@@ -16,11 +16,7 @@ function CopyButton({ text, light }: { text: string; light?: boolean }) {
   return (
     <button
       onClick={copy}
-      className={`absolute top-2.5 right-2.5 btn h-7 w-7 rounded-lg transition-colors ${
-        light
-          ? "bg-gray-200 hover:bg-gray-300 text-gray-500 hover:text-gray-700"
-          : "bg-white/10 hover:bg-white/20 text-white/60 hover:text-white"
-      }`}
+      className="absolute top-2.5 right-2.5 btn h-7 w-7 rounded-lg transition-colors bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-900 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white/60 dark:hover:text-white"
     >
       {copied ? <CheckCircle size={13} /> : <Copy size={13} />}
     </button>
@@ -150,7 +146,6 @@ function CodeBlock({ code, language = "bash" }: { code: string; language?: strin
   const lang = (language as Lang);
   return (
     <div className="relative group">
-      {/* Light theme: light gray bg, dark theme: near-black */}
       <div className="bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl overflow-x-auto">
         <div className="px-4 pt-8 pb-4">
           <pre className="text-sm font-mono leading-relaxed whitespace-pre text-gray-800 dark:text-gray-200">
@@ -158,11 +153,12 @@ function CodeBlock({ code, language = "bash" }: { code: string; language?: strin
           </pre>
         </div>
       </div>
-      {/* Language badge */}
+      {/* Language badge — stays on top of the scroll container */}
       <span className="absolute top-2.5 left-4 text-[10px] font-mono text-gray-400 dark:text-gray-500 select-none pointer-events-none">
         {language}
       </span>
-      <CopyButton text={code} light={false} />
+      {/* Copy button outside the overflow container so it never scrolls away */}
+      <CopyButton text={code} />
     </div>
   );
 }
@@ -191,13 +187,16 @@ function TabbedCodeBlock({ tabs }: { tabs: TabEntry[] }) {
           </button>
         ))}
       </div>
-      {/* Code area */}
-      <div className="relative bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-b-xl rounded-tr-xl overflow-x-auto">
-        <div className="px-4 pt-4 pb-4">
-          <pre className="text-sm font-mono leading-relaxed whitespace-pre text-gray-800 dark:text-gray-200">
-            {highlight(tab.code, tab.language)}
-          </pre>
+      {/* Code area: relative wrapper holds copy button; inner div scrolls */}
+      <div className="relative group bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-b-xl rounded-tr-xl">
+        <div className="overflow-x-auto">
+          <div className="px-4 pt-4 pb-4">
+            <pre className="text-sm font-mono leading-relaxed whitespace-pre text-gray-800 dark:text-gray-200">
+              {highlight(tab.code, tab.language)}
+            </pre>
+          </div>
         </div>
+        {/* Copy button outside overflow div — stays pinned top-right always */}
         <CopyButton text={tab.code} />
       </div>
     </div>
@@ -429,8 +428,8 @@ export default function ApiDocs() {
           <div className="bg-background border border-line rounded-xl p-5 space-y-3">
             <p className="text-sm text-muted">All errors return a JSON body with an <code className="bg-foreground px-1 rounded text-xs font-mono">error</code> field.</p>
             <CodeBlock code={`{ "error": "Human-readable error message" }`} language="json" />
-            <div className="rounded-xl border border-line overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="rounded-xl border border-line overflow-hidden overflow-x-auto">
+              <table className="w-full text-sm min-w-[360px]">
                 <thead className="bg-foreground">
                   <tr>
                     <th className="text-left px-3 py-2 text-xs font-semibold text-muted">Status</th>
@@ -448,8 +447,8 @@ export default function ApiDocs() {
                     ["500", "Server error — try again"],
                   ].map(([s, m]) => (
                     <tr key={s}>
-                      <td className="px-3 py-2 font-mono text-xs font-medium">{s}</td>
-                      <td className="px-3 py-2 text-xs text-muted">{m}</td>
+                      <td className="px-3 py-2 font-mono text-xs font-medium whitespace-nowrap">{s}</td>
+                      <td className="px-3 py-2 text-xs text-muted whitespace-nowrap">{m}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -844,13 +843,13 @@ apiRequest("POST", "/monitors/5/ping");
             <Trash2 size={18} className="text-emerald-500" />
             <h2 className="text-lg font-bold font-outfit">Quick Reference</h2>
           </div>
-          <div className="bg-background border border-line rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-background border border-line rounded-xl overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm min-w-[540px]">
               <thead className="bg-foreground">
                 <tr>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted">Endpoint</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted">Method</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted">Description</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted whitespace-nowrap">Endpoint</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted whitespace-nowrap">Method</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted whitespace-nowrap">Description</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -864,11 +863,11 @@ apiRequest("POST", "/monitors/5/ping");
                   ["/monitors/:id/history","GET",    "Get history (max 200, use ?limit=N)"],
                 ].map(([ep, m, desc]) => (
                   <tr key={ep + m}>
-                    <td className="px-4 py-2 font-mono text-xs text-main">{ep}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2 font-mono text-xs text-main whitespace-nowrap">{ep}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">
                       <Badge color={methodColors[m]}>{m}</Badge>
                     </td>
-                    <td className="px-4 py-2 text-xs text-muted">{desc}</td>
+                    <td className="px-4 py-2 text-xs text-muted whitespace-nowrap">{desc}</td>
                   </tr>
                 ))}
               </tbody>
