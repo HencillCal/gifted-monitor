@@ -42,7 +42,7 @@
 * { @apply outline-none; }
 
 html { overflow-x: clip; }
-body { @apply bg-background text-main font-sans overflow-x-hidden; }
+body { @apply bg-background text-main font-sans; }
 
 .main { @apply max-w-[90%] 2xl:max-w-[1280px] mx-auto; }
 .layout { @apply max-w-[90%] md:max-w-[700px] mx-auto; }
