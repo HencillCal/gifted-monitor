@@ -35,7 +35,7 @@ export default function About() {
       </section>
 
       {/* Main content */}
-      <section className="px-4 py-8">
+      <section className="px-4 py-8 overflow-hidden">
         <div className="max-w-3xl mx-auto space-y-10">
 
           <div data-aos="fade-right" data-aos-duration="600">
@@ -86,7 +86,7 @@ export default function About() {
       </section>
 
       {/* Values */}
-      <section className="py-14 px-4 bg-secondary">
+      <section className="py-14 px-4 bg-secondary overflow-hidden">
         <div className="main">
           <div className="text-center mb-10">
             <h2 data-aos="flip-up" className="text-3xl font-bold font-outfit mb-2">What We Stand For</h2>
