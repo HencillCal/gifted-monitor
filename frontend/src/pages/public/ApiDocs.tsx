@@ -214,7 +214,7 @@ function Badge({ color, children }: { color: string; children: React.ReactNode }
 }
 
 interface EndpointProps {
-  method: "GET" | "POST" | "PUT" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
   summary: string;
   description?: string;
@@ -228,6 +228,7 @@ const methodColors: Record<string, string> = {
   GET:    "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
   POST:   "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
   PUT:    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  PATCH:  "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
   DELETE: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 };
 
@@ -595,6 +596,27 @@ export default function ApiDocs() {
               response={`{ "message": "Ping triggered", "monitor_id": "5" }`}
               example={`curl -X POST ${BASE}/monitors/5/ping \\
   -H "X-API-Key: gm_your_key_here"`}
+            />
+
+            <Endpoint
+              method="PATCH"
+              path="/api/v1/monitors/:id/notifications"
+              summary="Update notification preferences"
+              description="Toggle email alerts for a specific monitor — down alerts, recovery alerts, or both. Only the fields you include will be changed."
+              params={[{ name: "id", type: "integer / string", required: true, desc: "Monitor ID" }]}
+              body={[
+                { name: "notify_down", type: "boolean", required: false, desc: "Send email when monitor goes down" },
+                { name: "notify_up",   type: "boolean", required: false, desc: "Send email when monitor recovers" },
+              ]}
+              response={`{
+  "id": 5,
+  "notify_down": false,
+  "notify_up": true
+}`}
+              example={`curl -X PATCH ${BASE}/monitors/5/notifications \\
+  -H "X-API-Key: gm_your_key_here" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "notify_down": false, "notify_up": true }'`}
             />
 
             <Endpoint
