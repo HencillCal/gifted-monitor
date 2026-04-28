@@ -68,6 +68,7 @@ router.patch("/users/:id", async (req, res) => {
     const target = await db.getUserById(targetId);
     if (!target) return res.status(404).json({ error: "User not found" });
     if (target.is_superadmin && !req.isSuperAdmin) return res.status(403).json({ error: "Only superadmins can modify other superadmins" });
+    if (target.is_admin && !req.isSuperAdmin) return res.status(403).json({ error: "Only superadmins can modify admin accounts" });
 
     const user = await db.updateUser(targetId, updates);
     const { password_hash, ...safe } = user;
@@ -96,6 +97,8 @@ router.post("/users/:id/reset-password", async (req, res) => {
     if (!target) return res.status(404).json({ error: "User not found" });
     if (target.is_superadmin && !req.isSuperAdmin)
       return res.status(403).json({ error: "Only the superadmin can reset another superadmin's password" });
+    if (target.is_admin && !req.isSuperAdmin)
+      return res.status(403).json({ error: "Only superadmins can reset an admin's password" });
 
     const password_hash = await hashPassword(newPassword);
     await db.updateUser(targetId, { password_hash });
@@ -113,6 +116,7 @@ router.delete("/users/:id", async (req, res) => {
     const target = await db.getUserById(targetId);
     if (!target) return res.status(404).json({ error: "User not found" });
     if (target.is_superadmin) return res.status(403).json({ error: "Cannot delete a superadmin account" });
+    if (target.is_admin && !req.isSuperAdmin) return res.status(403).json({ error: "Only superadmins can delete admin accounts" });
 
     const { password } = req.body || {};
     if (!password) return res.status(400).json({ error: "Password is required to delete a user" });
@@ -129,10 +133,13 @@ router.delete("/users/:id", async (req, res) => {
 router.get("/monitors", async (req, res) => {
   try {
     const db = getDB();
-    const page  = Math.max(1, parseInt(req.query.page)  || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
-    const search = sanitize(req.query.search || "");
-    const { monitors, total } = await db.getAllMonitors({ search, page, limit });
+    const page    = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit   = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const search  = sanitize(req.query.search || "");
+    const SAFE_SORT = ["name","url","status","uptime","last_checked","interval","created_at"];
+    const sortBy  = SAFE_SORT.includes(req.query.sortBy) ? req.query.sortBy : "created_at";
+    const sortDir = req.query.sortDir === "asc" ? "asc" : "desc";
+    const { monitors, total } = await db.getAllMonitors({ search, page, limit, sortBy, sortDir });
     const result = await Promise.all(monitors.map(async m => ({ ...m, history: await db.getMonitorHistory(m.id, 30) })));
     res.json({ monitors: result, total, page, limit });
   } catch { res.status(500).json({ error: "Failed to load monitors" }); }
@@ -186,13 +193,13 @@ router.post("/users/bulk", async (req, res) => {
       try {
         const target = await db.getUserById(String(id));
         if (!target) { skipped++; continue; }
+        if (target.is_superadmin) { skipped++; continue; }
+        if (target.is_admin && !req.isSuperAdmin) { skipped++; continue; }
         if (action === "disable") {
-          if (target.is_superadmin) { skipped++; continue; }
           await db.updateUser(String(id), { is_disabled: true });
         } else if (action === "enable") {
           await db.updateUser(String(id), { is_disabled: false });
         } else if (action === "delete") {
-          if (target.is_superadmin) { skipped++; continue; }
           await db.deleteUser(String(id));
         } else { skipped++; continue; }
         success++;
@@ -257,13 +264,24 @@ router.post("/monitors/:id/ping", async (req, res) => {
 // ─── Contact Messages ─────────────────────────────────────────────────────────
 router.get("/contact", async (req, res) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    res.json(await getDB().getContactMessages({ page, limit: 10 }));
+    const page  = Math.max(1, parseInt(req.query.page) || 1);
+    const tab   = ["new","read","draft"].includes(req.query.tab) ? req.query.tab : "new";
+    res.json(await getDB().getContactMessages({ page, limit: 10, tab }));
   } catch { res.status(500).json({ error: "Failed to fetch messages" }); }
 });
 
 router.patch("/contact/:id/read", async (req, res) => {
   try { await getDB().markContactRead(req.params.id); res.json({ ok: true }); }
+  catch { res.status(500).json({ error: "Failed to update message" }); }
+});
+
+router.patch("/contact/:id/draft", async (req, res) => {
+  try { await getDB().markContactDraft(req.params.id); res.json({ ok: true }); }
+  catch { res.status(500).json({ error: "Failed to update message" }); }
+});
+
+router.patch("/contact/:id/new", async (req, res) => {
+  try { await getDB().markContactNew(req.params.id); res.json({ ok: true }); }
   catch { res.status(500).json({ error: "Failed to update message" }); }
 });
 
@@ -276,7 +294,9 @@ router.post("/contact/bulk", async (req, res) => {
     let success = 0, skipped = 0;
     for (const id of ids) {
       try {
-        if (action === "read") await db.markContactRead(String(id));
+        if (action === "read")   await db.markContactRead(String(id));
+        else if (action === "draft")  await db.markContactDraft(String(id));
+        else if (action === "new")    await db.markContactNew(String(id));
         else if (action === "delete") await db.deleteContactMessage(String(id));
         else { skipped++; continue; }
         success++;
