@@ -179,7 +179,7 @@ export default function Home() {
                 )}
                 <div className="bg-background border border-line rounded-xl p-5 relative z-10">
                   <div className="flex items-center gap-3 mb-4">
-                    <span className="text-3xl font-bold font-outfit text-emerald-500 opacity-30">{step.num}</span>
+                    <span className="text-3xl font-bold font-outfit text-emerald-600 dark:text-emerald-400 opacity-70">{step.num}</span>
                     <div className="w-9 h-9 rounded-xl bg-emerald-500 center text-white shadow-sm">
                       <step.icon size={18} />
                     </div>
