@@ -57,19 +57,23 @@ async function sendMail({ to, subject, html, text }) {
 
 function logo() {
   return `
-    <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px">
       <tr>
-        <td style="background:#10b981;border-radius:10px;width:34px;height:34px;text-align:center;vertical-align:middle">
-          <span style="color:#fff;font-size:17px;font-weight:700;line-height:34px">G</span>
-        </td>
-        <td style="padding-left:10px;vertical-align:middle">
-          <span style="font-size:16px;font-weight:700;color:#111;font-family:Arial,sans-serif">Gifted Monitor</span>
+        <td align="center">
+          <img src="https://files.giftedtech.co.ke/image/u2wvoimage.jpg"
+               alt="Gifted Monitor" width="56" height="56"
+               style="border-radius:50%;display:block;border:2px solid #10b981;margin:0 auto 10px;object-fit:cover" />
+          <p style="margin:0;font-size:17px;font-weight:700;font-family:Arial,sans-serif">
+            <span style="color:#10b981">Gifted</span><span style="color:#111"> Monitor</span>
+          </p>
         </td>
       </tr>
     </table>`;
 }
 
 function emailWrapper(content) {
+  const year = new Date().getFullYear();
+  const yearStr = year > 2026 ? `2026\u2013${year}` : '2026';
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 16px">
@@ -81,7 +85,7 @@ function emailWrapper(content) {
         <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:32px;border-top:1px solid #e5e7eb;padding-top:20px">
           <tr>
             <td style="font-size:12px;color:#9ca3af;text-align:center">
-              © ${new Date().getFullYear()} Gifted Monitor · <a href="https://monitor.giftedtech.co.ke" style="color:#10b981;text-decoration:none">monitor.giftedtech.co.ke</a><br>
+              &copy; ${yearStr} Gifted Monitor &middot; <a href="https://monitor.giftedtech.co.ke" style="color:#10b981;text-decoration:none">monitor.giftedtech.co.ke</a><br>
               You are receiving this because you have an account with Gifted Monitor.
             </td>
           </tr>
