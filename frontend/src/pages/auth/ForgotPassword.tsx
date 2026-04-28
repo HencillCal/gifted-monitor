@@ -21,7 +21,7 @@ export default function ForgotPassword() {
       navigate("/verify", { state: { email: data.email, type: "reset" } });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
-      toast.error(error.response?.data?.error || "Failed to send OTP");
+      toast.error(error.response?.data?.error || "Failed to send reset link");
     }
   };
 
@@ -40,7 +40,7 @@ export default function ForgotPassword() {
         <ButtonWithLoader
           type="submit"
           loading={isSubmitting}
-          initialText="Send OTP"
+          initialText="Send Reset Link"
           loadingText="Sending..."
           className="w-full h-11 rounded-xl btn-primary text-sm"
         />
