@@ -3,6 +3,7 @@ const rateLimit = require("express-rate-limit");
 const { getDB } = require("../lib/db");
 const {
   generateToken, otpExpiry, signToken, signResetToken, verifyResetToken,
+  signVerifyBundle, verifyVerifyBundle,
   hashPassword, comparePassword, sanitize, requireAuth,
 } = require("../lib/auth");
 const { checkIpReputation, getClientIp } = require("../lib/ipcheck");
@@ -29,8 +30,9 @@ function validatePassword(password) {
   return null;
 }
 
-function makeVerifyLink(email, token, type) {
-  return `${config.FRONTEND_URL}/verify?email=${encodeURIComponent(email)}&token=${token}&type=${type}`;
+function makeVerifyLink(email, code, type, extra = {}) {
+  const bundle = signVerifyBundle(email, code, type, extra);
+  return `${config.FRONTEND_URL}/verify?t=${bundle}`;
 }
 
 // ── Signup ───────────────────────────────────────────────────────────────────
@@ -315,7 +317,7 @@ router.post("/request-email-change", requireAuth, otpLimiter, async (req, res) =
 
     const token = generateToken();
     await db.createOtp(newEmail, token, "email_change", otpExpiry(30));
-    const link = `${config.FRONTEND_URL}/verify?email=${encodeURIComponent(newEmail)}&token=${token}&type=email_change&uid=${req.userId}`;
+    const link = makeVerifyLink(newEmail, token, "email_change", { uid: req.userId });
     await mailer.sendVerificationLink(newEmail, "email_change", link);
 
     res.json({ message: `A confirmation link has been sent to ${newEmail}. Click it to complete the change.` });
@@ -354,6 +356,62 @@ router.post("/confirm-email-change", otpLimiter, async (req, res) => {
   } catch (err) {
     console.error("Email change confirm error:", err.message);
     res.status(500).json({ error: "Failed to confirm email change. Please try again." });
+  }
+});
+
+// ── Verify Bundle (secure one-click email links, no email/token in URL) ──────
+router.post("/verify-bundle", otpLimiter, async (req, res) => {
+  try {
+    const db = getDB();
+    const bundle = sanitize(req.body.bundle);
+    if (!bundle) return res.status(400).json({ error: "Missing verification token" });
+
+    let payload;
+    try { payload = verifyVerifyBundle(bundle); }
+    catch { return res.status(400).json({ error: "Invalid or expired link. Please request a new one." }); }
+
+    const { email, code, type, uid } = payload;
+
+    if (type === "email_change") {
+      if (!uid) return res.status(400).json({ error: "Invalid confirmation link" });
+      const otp = await db.getValidOtp(email, code, "email_change");
+      if (!otp) return res.status(400).json({ error: "Invalid or expired confirmation link. Please request a new one." });
+      await db.markOtpUsed(otp.id);
+      const user = await db.getUserById(uid);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      if (user.pending_email !== email) return res.status(400).json({ error: "This link does not match your pending email change." });
+      const conflict = await db.getUserByEmail(email);
+      if (conflict && String(conflict.id) !== String(uid)) return res.status(409).json({ error: "That email is already in use." });
+      await db.updateUser(uid, { email, pending_email: null });
+      const updated = await db.getUserById(uid);
+      const { password_hash, ...safe } = updated;
+      const newToken = signToken(updated.id, updated.is_admin, updated.is_superadmin);
+      return res.json({ message: "Email address updated successfully!", token: newToken, user: safe });
+    }
+
+    const otp = await db.getValidOtp(email, code, type);
+    if (!otp) return res.status(400).json({ error: "Invalid or expired link. Please request a new one." });
+    await db.markOtpUsed(otp.id);
+
+    if (type === "signup") {
+      const user = await db.getUserByEmail(email);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      await db.updateUser(user.id, { is_verified: true });
+      const authToken = signToken(user.id, user.is_admin, user.is_superadmin);
+      const { password_hash, ...safe } = { ...user, is_verified: true };
+      mailer.sendWelcome(user.email, user.name).catch(() => {});
+      return res.json({ token: authToken, user: safe, message: "Account verified successfully! Welcome aboard." });
+    }
+
+    if (type === "reset") {
+      const resetToken = signResetToken(email);
+      return res.json({ resetToken, message: "Verified. You can now reset your password." });
+    }
+
+    res.status(400).json({ error: "Unknown verification type" });
+  } catch (err) {
+    console.error("Verify bundle error:", err.message);
+    res.status(500).json({ error: "Verification failed. Please try again." });
   }
 });
 
