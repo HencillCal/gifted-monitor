@@ -172,7 +172,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               </div>
 
               {/* Nav items — all left-aligned */}
-              <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+              <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto overscroll-contain">
                 {navLinks.map(link =>
                   link.to.includes("#") ? (
                     <button
