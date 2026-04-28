@@ -187,8 +187,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
             />
             <motion.aside
               initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed top-0 left-0 h-screen w-72 bg-background border-r border-line z-50 md:hidden flex flex-col rounded-r-2xl shadow-xl"
+              transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
+              className="fixed top-0 left-0 h-dvh w-72 bg-background border-r border-line z-50 md:hidden flex flex-col rounded-r-2xl shadow-xl"
             >
               {/* Drawer header */}
               <div className="flex items-center justify-between px-5 h-14 border-b border-line shrink-0">
