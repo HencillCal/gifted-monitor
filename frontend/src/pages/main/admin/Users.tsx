@@ -283,64 +283,70 @@ export default function AdminUsers() {
             {sortedUsers.map((user: User) => (
               <div
                 key={user.id}
-                className={`bg-background border rounded-xl p-4 flex items-center gap-4 group transition-colors ${selected.includes(user.id) ? "border-emerald-500 ring-1 ring-emerald-500/20" : "border-line"}`}
+                className={`bg-background border rounded-xl p-4 space-y-3 transition-colors ${selected.includes(user.id) ? "border-emerald-500 ring-1 ring-emerald-500/20" : "border-line"}`}
               >
-                <div className="shrink-0 cursor-pointer" onClick={() => toggleSelect(user.id)}>
-                  <InputCheck
-                    checked={selected.includes(user.id)}
-                    onChange={() => toggleSelect(user.id)}
-                    size={18}
-                    checkSize={12}
-                  />
-                </div>
-                <div className="w-10 h-10 rounded-full bg-foreground center font-bold text-sm shrink-0 overflow-hidden">
-                  {user.avatar
-                    ? <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
-                    : user.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold truncate">{user.name}</p>
-                    {user.is_admin     && <Shield size={12} className="text-blue-500 shrink-0" />}
-                    {user.is_disabled  && <UserX  size={12} className="text-red-500  shrink-0" />}
-                    {user.is_superadmin && (
-                      <span className="text-[9px] font-bold bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full">SA</span>
-                    )}
-                    <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-full ml-auto shrink-0">
-                      {user.monitor_count ?? 0} monitor{(user.monitor_count ?? 0) !== 1 ? "s" : ""}
-                    </span>
+                {/* Row 1: checkbox + avatar + info */}
+                <div className="flex items-start gap-3">
+                  <div className="shrink-0 pt-0.5 cursor-pointer" onClick={() => toggleSelect(user.id)}>
+                    <InputCheck
+                      checked={selected.includes(user.id)}
+                      onChange={() => toggleSelect(user.id)}
+                      size={18}
+                      checkSize={12}
+                    />
                   </div>
-                  <p className="text-xs text-muted truncate">@{user.username} · {user.email}</p>
-                  <p className="text-xs text-muted">
-                    Limit: {(user.is_admin || user.is_superadmin) ? "∞" : (user.monitor_limit ?? 20)} · Joined {formatDate(user.created_at)}
-                  </p>
+                  <div className="w-10 h-10 rounded-full bg-foreground center font-bold text-sm shrink-0 overflow-hidden">
+                    {user.avatar
+                      ? <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
+                      : user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-sm font-semibold truncate">{user.name}</p>
+                      {user.is_admin     && <Shield size={12} className="text-blue-500 shrink-0" />}
+                      {user.is_disabled  && <UserX  size={12} className="text-red-500  shrink-0" />}
+                      {user.is_superadmin && (
+                        <span className="text-[9px] font-bold bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full">SA</span>
+                      )}
+                      <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-full ml-auto shrink-0">
+                        {user.monitor_count ?? 0} monitor{(user.monitor_count ?? 0) !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted truncate">@{user.username} · {user.email}</p>
+                    <p className="text-xs text-muted">
+                      Limit: {(user.is_admin || user.is_superadmin) ? "∞" : (user.monitor_limit ?? 20)} · Joined {formatDate(user.created_at)}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
-                  <button onClick={() => openEdit(user)} title="Edit user" className="btn h-8 w-8 rounded-lg bg-foreground text-muted hover:text-main">
-                    <Pencil size={13} />
+                {/* Row 2: action buttons */}
+                <div className="flex gap-1.5 flex-wrap pl-1">
+                  <button onClick={() => openEdit(user)} title="Edit user" className="btn h-8 px-3 rounded-lg bg-foreground text-muted hover:text-main text-xs gap-1.5">
+                    <Pencil size={12} /> <span className="sm:inline hidden">Edit</span>
                   </button>
-                  <button onClick={() => { setResetPwUser(user); setNewPassword(""); }} title="Reset password" className="btn h-8 w-8 rounded-lg bg-foreground text-muted hover:text-amber-500">
-                    <KeyRound size={13} />
+                  <button onClick={() => { setResetPwUser(user); setNewPassword(""); }} title="Reset password" className="btn h-8 px-3 rounded-lg bg-foreground text-muted hover:text-amber-500 text-xs gap-1.5">
+                    <KeyRound size={12} /> <span className="sm:inline hidden">Password</span>
                   </button>
-                  <button onClick={() => setMonitorsUser(user)} title="View monitors" className="btn h-8 w-8 rounded-lg bg-foreground text-muted hover:text-main">
-                    <Monitor size={13} />
+                  <button onClick={() => setMonitorsUser(user)} title="View monitors" className="btn h-8 px-3 rounded-lg bg-foreground text-muted hover:text-main text-xs gap-1.5">
+                    <Monitor size={12} /> <span className="sm:inline hidden">Monitors</span>
                   </button>
                   <button
                     onClick={() => patchMutation.mutate({ id: user.id, is_admin: !user.is_admin })}
                     title={user.is_admin ? "Remove admin" : "Make admin"}
-                    className={`btn h-8 w-8 rounded-lg ${user.is_admin ? "bg-blue-100 dark:bg-blue-900/30 text-blue-500" : "bg-foreground text-muted hover:text-main"}`}
+                    className={`btn h-8 px-3 rounded-lg text-xs gap-1.5 ${user.is_admin ? "bg-blue-100 dark:bg-blue-900/30 text-blue-500" : "bg-foreground text-muted hover:text-main"}`}
                   >
-                    {user.is_admin ? <ShieldOff size={14} /> : <Shield size={14} />}
+                    {user.is_admin ? <ShieldOff size={12} /> : <Shield size={12} />}
+                    <span className="sm:inline hidden">{user.is_admin ? "Unadmin" : "Admin"}</span>
                   </button>
                   <button
                     onClick={() => patchMutation.mutate({ id: user.id, is_disabled: !user.is_disabled })}
                     title={user.is_disabled ? "Enable account" : "Disable account"}
-                    className={`btn h-8 w-8 rounded-lg ${user.is_disabled ? "bg-red-100 dark:bg-red-900/30 text-red-500" : "bg-foreground text-muted"}`}
+                    className={`btn h-8 px-3 rounded-lg text-xs gap-1.5 ${user.is_disabled ? "bg-red-100 dark:bg-red-900/30 text-red-500" : "bg-foreground text-muted"}`}
                   >
-                    {user.is_disabled ? <UserCheck size={14} /> : <UserX size={14} />}
+                    {user.is_disabled ? <UserCheck size={12} /> : <UserX size={12} />}
+                    <span className="sm:inline hidden">{user.is_disabled ? "Enable" : "Disable"}</span>
                   </button>
-                  <button onClick={() => setDeleteTarget(user)} className="btn h-8 w-8 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-500">
-                    <Trash2 size={14} />
+                  <button onClick={() => setDeleteTarget(user)} title="Delete user" className="btn h-8 px-3 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-500 text-xs gap-1.5 ml-auto">
+                    <Trash2 size={12} /> <span className="sm:inline hidden">Delete</span>
                   </button>
                 </div>
               </div>
@@ -541,7 +547,7 @@ export default function AdminUsers() {
 
       {/* Avatar crop modal */}
       {cropOpen && rawImage && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={closeCropModal}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4" onClick={closeCropModal}>
           <div className="bg-background rounded-2xl p-5 w-full max-w-sm shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-sm">Crop profile picture</h3>
