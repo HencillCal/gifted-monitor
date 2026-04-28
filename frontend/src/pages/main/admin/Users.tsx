@@ -252,9 +252,9 @@ export default function AdminUsers() {
         </div>
 
         {selected.length > 0 && (
-          <div className="flex items-center gap-2 p-3 bg-secondary border border-line rounded-xl text-sm">
-            <span className="text-muted">{selected.length} selected</span>
-            <div className="ml-auto flex gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-secondary border border-line rounded-xl text-sm">
+            <span className="text-muted font-medium shrink-0">{selected.length} user{selected.length !== 1 ? "s" : ""} selected</span>
+            <div className="flex gap-1.5 flex-wrap sm:ml-auto">
               <button onClick={() => setBulkAction("enable")} className="btn h-8 px-3 rounded-lg bg-foreground text-xs gap-1">
                 <Play size={12} /> Enable
               </button>
