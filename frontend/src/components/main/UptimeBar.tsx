@@ -15,12 +15,13 @@ function formatCheckedAt(iso: string) {
 export default function UptimeBar({ history, maxBars = 30 }: UptimeBarProps) {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
 
-  // History arrives DESC (newest first). Keep that order so LEFT = newest.
-  // Pad nulls at the END (right) for unfilled time slots.
-  const recent = history.slice(0, maxBars);
-  const padded: (CheckHistory | null)[] = recent.concat(
-    Array(Math.max(0, maxBars - recent.length)).fill(null)
-  );
+  // History arrives DESC (newest first). Reverse so LEFT = oldest, RIGHT = newest (standard convention).
+  const recent = history.slice(0, maxBars).reverse();
+  // Pad nulls at the START (left) = unfilled old time slots (no data yet)
+  const padded: (CheckHistory | null)[] = [
+    ...Array(Math.max(0, maxBars - recent.length)).fill(null),
+    ...recent,
+  ];
 
   return (
     <div className="flex items-end gap-0.5">
@@ -72,7 +73,7 @@ export default function UptimeBar({ history, maxBars = 30 }: UptimeBarProps) {
                     <div className="text-gray-400">{formatCheckedAt(h.checked_at)}</div>
                   </div>
                 ) : (
-                  <div className="text-gray-400">No data</div>
+                  <div className="text-gray-400">No data yet</div>
                 )}
                 <div
                   className={clsx(
