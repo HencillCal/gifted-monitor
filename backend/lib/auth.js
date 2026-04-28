@@ -19,6 +19,15 @@ function verifyResetToken(token) {
   return payload;
 }
 
+function signVerifyBundle(email, code, type, extra = {}) {
+  return jwt.sign({ email, code, type, purpose: 'verify', ...extra }, config.JWT_SECRET, { expiresIn: '30m' });
+}
+function verifyVerifyBundle(bundle) {
+  const payload = jwt.verify(bundle, config.JWT_SECRET);
+  if (payload.purpose !== 'verify') throw new Error('Invalid verify bundle');
+  return payload;
+}
+
 async function hashPassword(password) { return bcrypt.hash(password, 12); }
 async function comparePassword(password, hash) { return bcrypt.compare(password, hash); }
 
@@ -87,6 +96,7 @@ module.exports = {
   generateToken, generateOtp, otpExpiry,
   signToken, verifyToken,
   signResetToken, verifyResetToken,
+  signVerifyBundle, verifyVerifyBundle,
   hashPassword, comparePassword,
   sanitize, validateEmail, validatePassword,
   requireAuth, requireAdmin, requireApiKey, hashApiKey,
