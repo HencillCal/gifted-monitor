@@ -56,7 +56,7 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
-      <Toaster position="top-center" richColors expand={false} />
+      <Toaster position="top-center" richColors expand={false} closeButton />
       <Routes>
         {/* Public pages */}
         <Route path="/" element={<Home />} />
