@@ -68,8 +68,8 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard label="Total users"    value={stats?.totalUsers    ?? 0} icon={Users}         color="bg-blue-50 dark:bg-blue-950/30 text-blue-500"       to="/admin/users" />
             <StatCard label="Total monitors" value={stats?.totalMonitors ?? 0} icon={Monitor}        color="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500" to="/admin/monitors" />
-            <StatCard label="Monitors up"    value={stats?.monitorsUp    ?? 0} icon={TrendingUp}     color="bg-green-50 dark:bg-green-950/30 text-green-500" />
-            <StatCard label="Monitors down"  value={stats?.monitorsDown  ?? 0} icon={AlertTriangle}  color="bg-red-50 dark:bg-red-950/30 text-red-500" />
+            <StatCard label="Monitors up"    value={stats?.monitorsUp    ?? 0} icon={TrendingUp}     color="bg-green-50 dark:bg-green-950/30 text-green-500"    to="/admin/monitors" />
+            <StatCard label="Monitors down"  value={stats?.monitorsDown  ?? 0} icon={AlertTriangle}  color="bg-red-50 dark:bg-red-950/30 text-red-500"          to="/admin/monitors" />
           </div>
         )}
 
