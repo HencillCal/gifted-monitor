@@ -6,11 +6,13 @@ import { Lock } from "lucide-react";
 import { AuthLayout } from "@/layouts";
 import { InputWithIcon, ButtonWithLoader } from "@/components/ui";
 import { resetPasswordSchema, type ResetPasswordForm } from "@/schemas";
+import { useAuthStore } from "@/store";
 import api from "@/config/api";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuthStore();
   const state = location.state as { resetToken?: string } | null;
   const resetToken = state?.resetToken;
 
@@ -26,8 +28,9 @@ export default function ResetPassword() {
     }
     try {
       const res = await api.post("/auth/reset-password", { resetToken, newPassword: data.newPassword });
-      toast.success(res.data.message || "Password reset successfully!");
-      navigate("/login");
+      logout();
+      toast.success(res.data.message || "Password reset successfully. Please log in.");
+      navigate("/login", { replace: true });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
       toast.error(error.response?.data?.error || "Reset failed");
