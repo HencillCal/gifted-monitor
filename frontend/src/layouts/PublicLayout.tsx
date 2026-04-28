@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { ModeToggle } from "@/components/ui";
 import { useAuthStore } from "@/store";
 import clsx from "clsx";
@@ -10,6 +10,7 @@ const navLinks = [
   { label: "Home", to: "/" },
   { label: "Features", to: "/#features" },
   { label: "How It Works", to: "/#how-it-works" },
+  { label: "API Docs", to: "/api-docs" },
   { label: "About", to: "/about" },
   { label: "Contact", to: "/contact" },
 ];
@@ -68,9 +69,11 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
       <header className="sticky top-0 z-50 bg-background/70 backdrop-blur-md border-b border-line rounded-b-2xl shadow-sm">
         <div className="main flex items-center justify-between h-14">
           <Link to="/" className="flex items-center gap-2 font-bold text-base font-outfit">
-            <div className="w-8 h-8 bg-emerald-500 rounded-xl center text-white">
-              <Activity size={15} />
-            </div>
+            <img
+              src="https://files.giftedtech.co.ke/image/u2wvoimage.jpg"
+              alt="Gifted Monitor"
+              className="w-8 h-8 rounded-full object-cover shrink-0"
+            />
             <span>
               <span className="text-emerald-500">Gifted</span>{" "}
               <span>Monitor</span>
@@ -155,9 +158,11 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               {/* Drawer header */}
               <div className="flex items-center justify-between px-5 h-14 border-b border-line shrink-0">
                 <Link to="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 font-bold text-sm font-outfit">
-                  <div className="w-7 h-7 bg-emerald-500 rounded-lg center text-white">
-                    <Activity size={13} />
-                  </div>
+                  <img
+                    src="https://files.giftedtech.co.ke/image/u2wvoimage.jpg"
+                    alt="Gifted Monitor"
+                    className="w-7 h-7 rounded-full object-cover shrink-0"
+                  />
                   <span><span className="text-emerald-500">Gifted</span> Monitor</span>
                 </Link>
                 <button onClick={() => setMobileOpen(false)} className="btn h-8 w-8 rounded-xl bg-foreground shrink-0">
@@ -222,6 +227,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
       <footer className="mx-4 mb-4 border border-line rounded-2xl">
         <div className="main py-3 flex flex-col sm:flex-row items-center justify-between gap-2 flex-wrap">
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
+            <a href="/api-docs" className="text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium">API Docs</a>
             <a href="/about"   className="text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium">About</a>
             <a href="/terms"   className="text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium">Terms</a>
             <a href="/privacy" className="text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium">Privacy</a>
