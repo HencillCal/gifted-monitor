@@ -30,14 +30,15 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
     setMobileOpen(false);
   }, [location.pathname]);
 
-  // Lock body scroll when drawer is open
+  // Lock scroll when drawer is open (both html and body)
   useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
+    const val = mobileOpen ? "hidden" : "";
+    document.documentElement.style.overflow = val;
+    document.body.style.overflow = val;
+    return () => {
+      document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
+    };
   }, [mobileOpen]);
 
   const handleNavClick = (to: string) => {
