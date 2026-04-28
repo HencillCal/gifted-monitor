@@ -58,6 +58,7 @@ router.post('/', async (req, res) => {
 
     const monitor = await db.createMonitor(req.userId, { name, url, path, method, body, intervalMins, notifyDown, notifyUp });
     await email.sendMonitorCreated(user.email, user.name, name, url + (path || ''), intervalMins);
+    pingMonitor(monitor).catch(err => console.error('Initial ping error:', err.message));
     res.json(monitor);
   } catch (err) {
     console.error('Create monitor error:', err.message);
