@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Search, Pause, Play, Trash2, RefreshCw, Filter } from "lucide-react";
+import { Plus, Search, Pause, Play, Trash2, RefreshCw, Filter, Activity, SearchX } from "lucide-react";
 import { AppLayout } from "@/layouts";
 import { MonitorCard } from "@/components/main";
 import { Modal, ButtonWithLoader, InputWithoutIcon, Breadcrumb } from "@/components/ui";
@@ -140,11 +140,21 @@ export default function Monitors() {
 
         {!isLoading && filtered.length === 0 && (
           <div className="text-center py-16 border border-dashed border-line rounded-xl">
-            <p className="text-muted text-sm">{search || statusFilter !== "all" ? "No monitors match your filter" : "No monitors yet"}</p>
-            {!search && statusFilter === "all" && (
-              <Link to="/monitors/new" className="btn btn-primary h-9 px-5 rounded-xl text-sm inline-flex mt-4">
-                <Plus size={15} /> Add monitor
-              </Link>
+            {(search || statusFilter !== "all") ? (
+              <>
+                <SearchX size={36} className="text-muted mx-auto mb-3 opacity-60" />
+                <p className="font-medium text-sm">No results found</p>
+                <p className="text-xs text-muted mt-1">Try adjusting your search or filter</p>
+              </>
+            ) : (
+              <>
+                <Activity size={36} className="text-muted mx-auto mb-3 opacity-60" />
+                <p className="font-medium text-sm">No monitors yet</p>
+                <p className="text-xs text-muted mt-1 mb-4">Start monitoring your websites and APIs</p>
+                <Link to="/monitors/new" className="btn btn-primary h-9 px-5 rounded-xl text-sm inline-flex">
+                  <Plus size={15} /> Add monitor
+                </Link>
+              </>
             )}
           </div>
         )}
