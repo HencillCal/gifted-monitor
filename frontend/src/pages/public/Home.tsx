@@ -53,18 +53,18 @@ export default function Home() {
                 so you can fix it before your users even notice.
               </p>
 
-              <div data-aos="zoom-in" data-aos-delay="200" className="flex flex-wrap gap-3 mb-7">
+              <div data-aos="zoom-in" data-aos-delay="200" className="flex gap-2 mb-7">
                 <Link
                   to={token ? "/dashboard" : "/signup"}
-                  className="btn h-11 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm transition-colors gap-2"
+                  className="btn h-10 px-4 sm:px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs sm:text-sm transition-colors gap-1.5 whitespace-nowrap"
                 >
-                  {token ? <><LayoutDashboard size={15} /> Go to Dashboard</> : "🚀 Start Monitoring Free"}
+                  {token ? <><LayoutDashboard size={14} /> Go to Dashboard</> : "🚀 Start Monitoring Free"}
                 </Link>
                 <button
                   onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
-                  className="btn h-11 px-6 rounded-xl border border-line hover:bg-foreground text-sm font-medium transition-colors gap-2"
+                  className="btn h-10 px-4 sm:px-6 rounded-xl border border-line hover:bg-foreground text-xs sm:text-sm font-medium transition-colors gap-1.5 whitespace-nowrap"
                 >
-                  See Features <ArrowRight size={15} />
+                  See Features <ArrowRight size={14} />
                 </button>
               </div>
 
@@ -228,11 +228,11 @@ export default function Home() {
             <p className="text-muted max-w-lg mx-auto mb-8 text-sm leading-relaxed">
               No credit card. No complicated setup. Just sign up, add a monitor, and we'll keep watch while you focus on building.
             </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Link to={token ? "/dashboard" : "/signup"} className="btn h-11 px-8 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm transition-colors gap-2">
-                {token ? <><LayoutDashboard size={15} /> Go to Dashboard</> : "🚀 Get Started Free"}
+            <div className="flex justify-center gap-2">
+              <Link to={token ? "/dashboard" : "/signup"} className="btn h-10 px-5 sm:px-8 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm transition-colors gap-2 whitespace-nowrap">
+                {token ? <><LayoutDashboard size={14} /> Go to Dashboard</> : "🚀 Get Started Free"}
               </Link>
-              <Link to="/contact" className="btn h-11 px-8 rounded-xl border border-line hover:bg-foreground font-medium text-sm transition-colors">
+              <Link to="/contact" className="btn h-10 px-5 sm:px-8 rounded-xl border border-line hover:bg-foreground font-medium text-xs sm:text-sm transition-colors whitespace-nowrap">
                 Contact Us
               </Link>
             </div>
