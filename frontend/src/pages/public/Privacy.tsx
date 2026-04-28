@@ -78,7 +78,7 @@ export default function Privacy() {
       </section>
 
       {/* Sections */}
-      <section className="px-4 pb-16">
+      <section className="px-4 pb-16 overflow-hidden">
         <div className="max-w-3xl mx-auto space-y-4">
           {sections.map((s, i) => (
             <div
