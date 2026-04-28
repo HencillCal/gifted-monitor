@@ -56,9 +56,13 @@ app.use("/api", require("../routes"));
 // ─── Static Frontend (production / built mode) ────────────────────────
 const distPath = path.join(__dirname, "../../frontend/dist");
 if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath, { maxAge: "1h" }));
-  // SPA fallback — serve index.html for all non-API client routes
+  // Hashed asset files (JS/CSS with content-hash in name) — cache aggressively
+  app.use("/assets", express.static(path.join(distPath, "assets"), { maxAge: "1y", immutable: true }));
+  // Other static files (favicon, manifest, etc.) — short cache
+  app.use(express.static(distPath, { maxAge: "5m", index: false }));
+  // SPA fallback — always serve a fresh index.html (no browser cache)
   app.get("*", (req, res) => {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate");
     res.sendFile(path.join(distPath, "index.html"));
   });
 } else {
