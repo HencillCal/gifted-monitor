@@ -66,8 +66,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Sticky header */}
-      <header className="sticky top-0 z-50 bg-background/70 backdrop-blur-md border-b border-line rounded-b-2xl shadow-sm">
+      {/* Fixed header — always visible on all devices */}
+      <header className="fixed top-0 left-0 right-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-line rounded-b-2xl shadow-sm">
         <div className="main flex items-center justify-between h-14">
           <Link to="/" className="flex items-center gap-2 font-bold text-base font-outfit">
             <img
@@ -223,7 +223,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         )}
       </AnimatePresence>
 
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 pt-14">{children}</main>
 
       <footer className="mx-4 mb-4 border border-line rounded-2xl">
         <div className="main py-3 flex flex-col sm:flex-row items-center justify-between gap-2 flex-wrap">
