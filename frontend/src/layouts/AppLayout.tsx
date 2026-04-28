@@ -55,10 +55,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const isAdminRoute = adminNav.some(n => pathname.startsWith(n.to));
   const [mobileAdminOpen, setMobileAdminOpen] = useState(isAdminRoute);
 
-  // Lock scroll when mobile menu open
+  // Lock scroll when mobile menu open (both html and body)
   useEffect(() => {
-    document.body.style.overflow = mobileOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    const val = mobileOpen ? "hidden" : "";
+    document.documentElement.style.overflow = val;
+    document.body.style.overflow = val;
+    return () => {
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+    };
   }, [mobileOpen]);
 
   // Close mobile menu on route change
