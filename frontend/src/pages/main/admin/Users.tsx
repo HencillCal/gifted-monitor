@@ -1,7 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Search, Shield, ShieldOff, Trash2, UserCheck, UserX, AlertCircle, Pencil, Monitor, KeyRound, Pause, Play, RefreshCw, Camera, X, ZoomIn, ZoomOut, ExternalLink } from "lucide-react";
+import { Search, Shield, ShieldOff, Trash2, UserCheck, UserX, AlertCircle, Pencil, Monitor, KeyRound, Pause, Play, RefreshCw, Camera, X, ZoomIn, ZoomOut, ExternalLink, ArrowUpDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import Cropper from "react-easy-crop";
 import { AppLayout } from "@/layouts";
@@ -21,10 +21,22 @@ interface UserMonitor {
   uptime_pct: string | number | null;
 }
 
+type SortKey = "newest" | "oldest" | "name-asc" | "name-desc" | "monitors-desc" | "monitors-asc";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "newest",        label: "Newest first" },
+  { value: "oldest",        label: "Oldest first" },
+  { value: "name-asc",      label: "Name A → Z" },
+  { value: "name-desc",     label: "Name Z → A" },
+  { value: "monitors-desc", label: "Most monitors" },
+  { value: "monitors-asc",  label: "Fewest monitors" },
+];
+
 export default function AdminUsers() {
   const qc = useQueryClient();
   const [search, setSearch]               = useState("");
   const [page, setPage]                   = useState(1);
+  const [sort, setSort]                   = useState<SortKey>("newest");
   const [deleteTarget, setDeleteTarget]   = useState<User | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
 
@@ -64,6 +76,19 @@ export default function AdminUsers() {
     queryFn: () => api.get(`/admin/users/${monitorsUser!.id}/monitors`).then(r => r.data),
     enabled: !!monitorsUser,
   });
+
+  const sortedUsers = useMemo(() => {
+    const users = [...(data?.users ?? [])];
+    switch (sort) {
+      case "newest":        return users.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      case "oldest":        return users.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      case "name-asc":      return users.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      case "name-desc":     return users.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+      case "monitors-desc": return users.sort((a, b) => (b.monitor_count ?? 0) - (a.monitor_count ?? 0));
+      case "monitors-asc":  return users.sort((a, b) => (a.monitor_count ?? 0) - (b.monitor_count ?? 0));
+      default:              return users;
+    }
+  }, [data?.users, sort]);
 
   const patchMutation = useMutation({
     mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) =>
@@ -202,14 +227,28 @@ export default function AdminUsers() {
           </button>
         </div>
 
-        <div className="relative">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-          <input
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); setSelected([]); }}
-            placeholder="Search by name, email, or username..."
-            className="w-full pl-10 h-10 rounded-xl border border-line text-sm focus:border-main bg-background"
-          />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+            <input
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); setSelected([]); }}
+              placeholder="Search by name, email, or username..."
+              className="w-full pl-10 h-10 rounded-xl border border-line text-sm focus:border-main bg-background"
+            />
+          </div>
+          <div className="relative shrink-0">
+            <ArrowUpDown size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+            <select
+              value={sort}
+              onChange={e => setSort(e.target.value as SortKey)}
+              className="h-10 pl-8 pr-3 rounded-xl border border-line text-sm bg-background focus:border-main appearance-none cursor-pointer"
+            >
+              {SORT_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {selected.length > 0 && (
@@ -241,7 +280,7 @@ export default function AdminUsers() {
           </div>
         ) : (
           <div className="space-y-2">
-            {data?.users.map((user: User) => (
+            {sortedUsers.map((user: User) => (
               <div
                 key={user.id}
                 className={`bg-background border rounded-xl p-4 flex items-center gap-4 group transition-colors ${selected.includes(user.id) ? "border-emerald-500 ring-1 ring-emerald-500/20" : "border-line"}`}
