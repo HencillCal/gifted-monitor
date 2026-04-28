@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Search, Zap, Pause, Play, Trash2, AlertCircle, Pencil, ExternalLink, RefreshCw } from "lucide-react";
+import { Search, Zap, Pause, Play, Trash2, AlertCircle, Pencil, ExternalLink, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { AppLayout } from "@/layouts";
 import { StatusBadge } from "@/components/main";
 import { Modal, ButtonWithLoader, InputWithoutIcon, InputCheck, Breadcrumb } from "@/components/ui";
@@ -10,6 +10,8 @@ import { timeAgo } from "@/helpers/formatDate";
 import { INTERVAL_OPTIONS } from "@/helpers/intervals";
 import type { PaginatedMonitors, Monitor } from "@/types";
 import api from "@/config/api";
+
+type SortField = "name" | "url" | "status" | "uptime" | "last_checked" | "interval" | "created_at";
 
 type EditForm = {
   name: string;
@@ -23,19 +25,29 @@ type EditForm = {
   is_active: boolean;
 };
 
+const SORT_OPTIONS: { value: SortField; label: string }[] = [
+  { value: "created_at",   label: "Date added" },
+  { value: "name",         label: "Name" },
+  { value: "url",          label: "URL" },
+  { value: "status",       label: "Status" },
+  { value: "uptime",       label: "Uptime %" },
+  { value: "last_checked", label: "Last checked" },
+  { value: "interval",     label: "Interval" },
+];
+
 export default function AdminMonitors() {
   const qc = useQueryClient();
   const [search, setSearch]           = useState("");
   const [page, setPage]               = useState(1);
+  const [sortBy, setSortBy]           = useState<SortField>("created_at");
+  const [sortDir, setSortDir]         = useState<"asc" | "desc">("desc");
   const [deleteId, setDeleteId]       = useState<string | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
 
-  // Bulk selection
   const [selected, setSelected]     = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<"pause" | "activate" | "delete" | null>(null);
   const [bulkPassword, setBulkPassword] = useState("");
 
-  // Edit modal state
   const [editTarget, setEditTarget] = useState<Monitor | null>(null);
   const [editForm,   setEditForm]   = useState<EditForm>({
     name: "", url: "", path: "", method: "GET", body: "", intervalMins: 3,
@@ -43,8 +55,8 @@ export default function AdminMonitors() {
   });
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery<PaginatedMonitors>({
-    queryKey: ["admin-monitors", search, page],
-    queryFn: () => api.get(`/admin/monitors?search=${search}&page=${page}&limit=20`).then(r => r.data),
+    queryKey: ["admin-monitors", search, page, sortBy, sortDir],
+    queryFn: () => api.get(`/admin/monitors?search=${search}&page=${page}&limit=20&sortBy=${sortBy}&sortDir=${sortDir}`).then(r => r.data),
   });
 
   const updateMutation = useMutation({
@@ -110,7 +122,7 @@ export default function AdminMonitors() {
   const handleEditSave = () => {
     if (!editTarget) return;
     updateMutation.mutate(
-      { id: editTarget.id, ...editForm },
+      { id: editTarget.id as string, ...editForm },
       { onSuccess: () => setEditTarget(null) }
     );
   };
@@ -123,6 +135,22 @@ export default function AdminMonitors() {
     const payload: Record<string, unknown> = { action: bulkAction, ids: selected };
     if (bulkAction === "delete") payload.password = bulkPassword;
     bulkMutation.mutate(payload);
+  };
+
+  const handleSortField = (field: SortField) => {
+    if (field === sortBy) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortDir("desc");
+    }
+    setPage(1);
+    setSelected([]);
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (field !== sortBy) return <ArrowUpDown size={12} className="text-muted opacity-50" />;
+    return sortDir === "asc" ? <ArrowUp size={12} className="text-main" /> : <ArrowDown size={12} className="text-main" />;
   };
 
   const totalPages = data ? Math.ceil(data.total / 20) : 1;
@@ -156,6 +184,48 @@ export default function AdminMonitors() {
           />
         </div>
 
+        {/* Sort bar — buttons on desktop, dropdown on mobile */}
+        <div className="hidden sm:flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs text-muted mr-1">Sort:</span>
+          {SORT_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => handleSortField(opt.value)}
+              className={`flex items-center gap-1 h-7 px-2.5 rounded-lg text-xs font-medium border transition-colors ${
+                sortBy === opt.value
+                  ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400"
+                  : "bg-foreground border-line text-muted hover:text-main hover:border-main/30"
+              }`}
+            >
+              {opt.label}
+              <SortIcon field={opt.value} />
+            </button>
+          ))}
+        </div>
+        <div className="flex sm:hidden items-center gap-2">
+          <span className="text-xs text-muted shrink-0">Sort:</span>
+          <div className="relative flex-1">
+            <ArrowUpDown size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+            <select
+              value={`${sortBy}:${sortDir}`}
+              onChange={e => {
+                const [field, dir] = e.target.value.split(":");
+                setSortBy(field as SortField);
+                setSortDir(dir as "asc" | "desc");
+                setPage(1);
+              }}
+              className="w-full h-9 pl-8 pr-3 rounded-xl border border-line text-sm bg-background appearance-none cursor-pointer"
+            >
+              {SORT_OPTIONS.flatMap(opt => [
+                { value: `${opt.value}:desc`, label: `${opt.label} ↓` },
+                { value: `${opt.value}:asc`,  label: `${opt.label} ↑` },
+              ]).map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         {selected.length > 0 && (
           <div className="flex items-center gap-2 p-3 bg-secondary border border-line rounded-xl text-sm">
             <span className="text-muted">{selected.length} selected</span>
@@ -185,19 +255,24 @@ export default function AdminMonitors() {
           </div>
         ) : (
           <div className="space-y-2">
+            {data?.monitors.length === 0 && (
+              <div className="text-center py-16 border border-dashed border-line rounded-xl">
+                <p className="text-muted text-sm">No monitors found</p>
+              </div>
+            )}
             {data?.monitors.map((m: Monitor) => (
               <div
                 key={m.id}
-                className={`bg-background border rounded-xl p-4 flex items-center gap-3 group transition-colors ${selected.includes(m.id) ? "border-emerald-500 ring-1 ring-emerald-500/20" : "border-line"}`}
+                className={`bg-background border rounded-xl p-4 flex items-center gap-3 group transition-colors ${selected.includes(String(m.id)) ? "border-emerald-500 ring-1 ring-emerald-500/20" : "border-line"}`}
               >
                 <div
                   className="shrink-0 cursor-pointer"
-                  onClick={() => toggleSelect(m.id)}
+                  onClick={() => toggleSelect(String(m.id))}
                   title="Select"
                 >
                   <InputCheck
-                    checked={selected.includes(m.id)}
-                    onChange={() => toggleSelect(m.id)}
+                    checked={selected.includes(String(m.id))}
+                    onChange={() => toggleSelect(String(m.id))}
                     size={18}
                     checkSize={12}
                   />
@@ -229,15 +304,15 @@ export default function AdminMonitors() {
                     <ExternalLink size={13} />
                   </Link>
                   <button onClick={() => openEdit(m)} title="Edit" className="btn h-8 w-8 rounded-lg bg-foreground text-muted hover:text-main"><Pencil size={13} /></button>
-                  <button onClick={() => pingMutation.mutate(m.id)} title="Ping" className="btn h-8 w-8 rounded-lg bg-foreground"><Zap size={13} /></button>
+                  <button onClick={() => pingMutation.mutate(String(m.id))} title="Ping" className="btn h-8 w-8 rounded-lg bg-foreground"><Zap size={13} /></button>
                   <button
-                    onClick={() => updateMutation.mutate({ id: m.id, is_active: !m.is_active })}
+                    onClick={() => updateMutation.mutate({ id: String(m.id), is_active: !m.is_active })}
                     title={m.is_active ? "Pause" : "Activate"}
                     className={`btn h-8 w-8 rounded-lg ${m.is_active ? "bg-foreground" : "bg-amber-100 dark:bg-amber-900/20 text-amber-600"}`}
                   >
                     {m.is_active ? <Pause size={13} /> : <Play size={13} />}
                   </button>
-                  <button onClick={() => setDeleteId(m.id)} className="btn h-8 w-8 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-500"><Trash2 size={13} /></button>
+                  <button onClick={() => setDeleteId(String(m.id))} className="btn h-8 w-8 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-500"><Trash2 size={13} /></button>
                 </div>
               </div>
             ))}
