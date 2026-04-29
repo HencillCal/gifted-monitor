@@ -3,6 +3,28 @@ const { getDB } = require("./db");
 const mailer = require("./email");
 const config = require("../config");
 
+// ── Concurrency limiter ───────────────────────────────────────────────────────
+// Runs async tasks with at most CONCURRENCY_LIMIT running at the same time.
+// This prevents socket exhaustion when there are many monitors due at once.
+const CONCURRENCY_LIMIT = 6;
+
+async function runWithConcurrencyLimit(tasks) {
+  const results = [];
+  let idx = 0;
+  async function worker() {
+    while (idx < tasks.length) {
+      const i = idx++;
+      results[i] = await tasks[i]();
+    }
+  }
+  const workers = Array.from({ length: Math.min(CONCURRENCY_LIMIT, tasks.length) }, worker);
+  await Promise.all(workers);
+  return results;
+}
+
+// ── Overlap guard — prevents a new cycle from starting while one is in progress
+let isCycleRunning = false;
+
 function buildCfg(monitor) {
   const targetUrl = monitor.url + (monitor.path || "");
   const cfg = {
@@ -68,16 +90,11 @@ async function pingMonitor(monitor) {
 
   if (status === "down") {
     if (prevStatus !== "down") {
-      // ── First DOWN detection ──────────────────────────────────────────────
-      // Record incident start but DO NOT alert yet. Wait for the next check
-      // to confirm this isn't a brief blip. last_reminder_at = null signals
-      // "incident pending confirmation — no alert sent yet".
       updates.incident_start = now;
       updates.last_reminder_at = null;
       console.log(`🟡 [PENDING] ${targetUrl} — first DOWN, awaiting next check to confirm`);
 
     } else if (monitor.incident_start && !monitor.last_reminder_at) {
-      // ── Second consecutive DOWN — confirmed outage, send alert now ────────
       updates.last_reminder_at = now;
       console.log(`🔴 [CONFIRMED DOWN] ${targetUrl} — sending alert`);
       if (monitor.notify_down !== false) {
@@ -87,7 +104,6 @@ async function pingMonitor(monitor) {
       }
 
     } else if (monitor.last_reminder_at) {
-      // ── Already alerted — send a reminder every 24 h ─────────────────────
       const hoursSince = (Date.now() - new Date(monitor.last_reminder_at)) / (1000 * 60 * 60);
       if (hoursSince >= 24) {
         updates.last_reminder_at = now;
@@ -101,14 +117,10 @@ async function pingMonitor(monitor) {
     }
 
   } else if (status === "up" && prevStatus === "down" && monitor.incident_start) {
-    // ── Site recovered ────────────────────────────────────────────────────
     const downtimeMs = Date.now() - new Date(monitor.incident_start);
     updates.incident_start = null;
     updates.last_reminder_at = null;
 
-    // Only send "recovered" if we actually sent a "down" alert first.
-    // If last_reminder_at was null the blip resolved before we ever alerted —
-    // no need to tell the user about something they never heard about.
     if (monitor.last_reminder_at && monitor.notify_up !== false) {
       console.log(`✅ [RECOVERED] ${targetUrl} — sending recovery alert`);
       const user = await db.getUserById(monitor.user_id);
@@ -124,16 +136,22 @@ async function pingMonitor(monitor) {
 }
 
 async function runPingCycle() {
+  if (isCycleRunning) {
+    console.log("⏭ Previous cycle still running — skipping this tick");
+    return;
+  }
+  isCycleRunning = true;
   try {
     const db = getDB();
     const monitors = await db.getAllActiveMonitors();
     const now = Date.now();
     const due = monitors.filter(m => !m.last_checked || (now - new Date(m.last_checked)) / 1000 / 60 >= (m.interval_mins || 3));
     if (due.length > 0) {
-      console.log(`🔄 Pinging ${due.length}/${monitors.length} due monitors…`);
-      await Promise.all(due.map(pingMonitor));
+      console.log(`🔄 Pinging ${due.length}/${monitors.length} due monitors (max ${CONCURRENCY_LIMIT} concurrent)…`);
+      await runWithConcurrencyLimit(due.map(m => () => pingMonitor(m)));
     }
   } catch (err) { console.error("Ping cycle error:", err.message); }
+  finally { isCycleRunning = false; }
 }
 
 function startPingEngine() {
