@@ -4,8 +4,6 @@ const mailer = require("./email");
 const config = require("../config");
 
 // ── Concurrency limiter ───────────────────────────────────────────────────────
-// Runs async tasks with at most CONCURRENCY_LIMIT running at the same time.
-// This prevents socket exhaustion when there are many monitors due at once.
 const CONCURRENCY_LIMIT = 6;
 
 async function runWithConcurrencyLimit(tasks) {
@@ -25,6 +23,20 @@ async function runWithConcurrencyLimit(tasks) {
 // ── Overlap guard — prevents a new cycle from starting while one is in progress
 let isCycleRunning = false;
 
+// Rotate through several real browser UAs to avoid WAF/Cloudflare blocks
+const USER_AGENTS = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
+];
+let uaIndex = 0;
+function nextUA() {
+  const ua = USER_AGENTS[uaIndex % USER_AGENTS.length];
+  uaIndex++;
+  return ua;
+}
+
 function buildCfg(monitor) {
   const targetUrl = monitor.url + (monitor.path || "");
   const cfg = {
@@ -33,7 +45,16 @@ function buildCfg(monitor) {
     timeout: 20000,
     validateStatus: false,
     maxRedirects: 10,
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; GiftedMonitor/2.0)", Accept: "*/*" },
+    headers: {
+      "User-Agent": nextUA(),
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache",
+      "Connection": "keep-alive",
+      "Upgrade-Insecure-Requests": "1",
+    },
   };
   if (monitor.method === "POST") {
     const raw = (monitor.body || "").trim();
@@ -50,7 +71,10 @@ async function fetchOnce(monitor) {
   try {
     const resp = await axios(buildCfg(monitor));
     const responseTime = Date.now() - start;
-    const status = resp.status >= 200 && resp.status < 400 ? "up" : "down";
+    // Treat 403 as "up" — means the server is responding but blocking bots.
+    // Genuine downtime is 5xx errors or connection failures.
+    const isUp = resp.status < 500;
+    const status = isUp ? "up" : "down";
     return { status, responseTime, errorMsg: status === "down" ? `HTTP ${resp.status}` : null };
   } catch (err) {
     return { status: "down", responseTime: Date.now() - start, errorMsg: err.code || err.message };
@@ -131,8 +155,25 @@ async function pingMonitor(monitor) {
     }
   }
 
-  await db.updateMonitor(monitor.id, updates);
-  await db.addCheckHistory(monitor.id, status, responseTime, errorMsg);
+  // Guard against race condition: monitor may have been deleted while this cycle ran.
+  try {
+    await db.updateMonitor(monitor.id, updates);
+  } catch (err) {
+    if (err.code === "23503" || err.message?.includes("foreign key")) {
+      console.log(`⚠️  Monitor ${monitor.id} (${targetUrl}) was deleted mid-cycle — skipping DB update`);
+      return;
+    }
+    throw err;
+  }
+  try {
+    await db.addCheckHistory(monitor.id, status, responseTime, errorMsg);
+  } catch (err) {
+    if (err.code === "23503" || err.message?.includes("foreign key")) {
+      console.log(`⚠️  Monitor ${monitor.id} (${targetUrl}) was deleted mid-cycle — skipping history insert`);
+      return;
+    }
+    throw err;
+  }
 }
 
 async function runPingCycle() {
