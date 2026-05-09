@@ -329,7 +329,7 @@ function Endpoint({ method, path, summary, description, params, body, response, 
   );
 }
 
-const BASE = "https://monitor.giftedtech.co.ke/api/v1";
+const BASE = "https://monitor.gifted.co.ke/api/v1";
 
 export default function ApiDocs() {
   return (
