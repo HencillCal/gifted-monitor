@@ -2,7 +2,7 @@
 <p align="center"><b>Keep free-hosted sites awake. Know the moment yours goes down — before your users do.</b></p>
 
 <p align="center">
-  <a href="https://monitor.giftedtech.co.ke"><img src="https://img.shields.io/badge/LIVE%20APP-monitor.giftedtech.co.ke-green?style=for-the-badge&logo=googlechrome" alt="Live App"/></a>
+  <a href="https://monitor.gifted.co.ke"><img src="https://img.shields.io/badge/LIVE%20APP-monitor.gifted.co.ke-green?style=for-the-badge&logo=googlechrome" alt="Live App"/></a>
 </p>
 
 <p align="center">
@@ -28,7 +28,7 @@
 
 It's a full-stack self-hostable uptime monitoring SaaS with multi-DB support. It watches your websites 24/7, keeps free-tier services alive with regular pings, and sends instant email alerts when something goes down — and again when it recovers.
 
-**Live at:** [https://monitor.giftedtech.co.ke](https://monitor.giftedtech.co.ke)
+**Live at:** [https://monitor.gifted.co.ke](https://monitor.gifted.co.ke)
 
 | Feature | Details |
 |---|---|
@@ -647,7 +647,7 @@ Each user can create up to **10 personal API keys** from **Profile → API Keys*
 
 **Creating a key via the API (JWT required):**
 ```bash
-curl -X POST https://monitor.giftedtech.co.ke/api/apikeys \
+curl -X POST https://monitor.gifted.co.ke/api/apikeys \
   -H "Authorization: Bearer YOUR_JWT" \
   -H "Content-Type: application/json" \
   -d '{"name":"My CI Key"}'
@@ -665,13 +665,13 @@ curl -X POST https://monitor.giftedtech.co.ke/api/apikeys \
 
 **Listing keys:**
 ```bash
-curl https://monitor.giftedtech.co.ke/api/apikeys \
+curl https://monitor.gifted.co.ke/api/apikeys \
   -H "Authorization: Bearer YOUR_JWT"
 ```
 
 **Revoking a key:**
 ```bash
-curl -X DELETE https://monitor.giftedtech.co.ke/api/apikeys/KEY_ID \
+curl -X DELETE https://monitor.gifted.co.ke/api/apikeys/KEY_ID \
   -H "Authorization: Bearer YOUR_JWT"
 ```
 
@@ -688,7 +688,7 @@ curl -X DELETE https://monitor.giftedtech.co.ke/api/apikeys/KEY_ID \
 
 The public REST API is available at `/api/v1/*`. All endpoints require an `X-API-Key` header. Create keys from **Profile → API Keys** tab. Full interactive documentation is available in-app at `/docs`.
 
-**Base URL:** `https://monitor.giftedtech.co.ke/api/v1`
+**Base URL:** `https://monitor.gifted.co.ke/api/v1`
 
 **Authentication:**
 ```
@@ -750,7 +750,7 @@ X-API-Key: gm_your_api_key_here
 
 **Node.js**
 ```javascript
-const BASE = 'https://monitor.giftedtech.co.ke/api/v1';
+const BASE = 'https://monitor.gifted.co.ke/api/v1';
 const KEY  = 'gm_your_api_key_here';
 
 // List monitors
@@ -774,7 +774,7 @@ console.log(monitor.id);
 ```python
 import requests
 
-BASE = 'https://monitor.giftedtech.co.ke/api/v1'
+BASE = 'https://monitor.gifted.co.ke/api/v1'
 HEADERS = {'X-API-Key': 'gm_your_api_key_here'}
 
 # List monitors
@@ -789,7 +789,7 @@ print(new['id'])
 
 **PHP**
 ```php
-$base = 'https://monitor.giftedtech.co.ke/api/v1';
+$base = 'https://monitor.gifted.co.ke/api/v1';
 $key  = 'gm_your_api_key_here';
 
 $ch = curl_init("$base/monitors");
@@ -804,17 +804,17 @@ print_r($data['monitors']);
 **cURL**
 ```bash
 # List monitors
-curl https://monitor.giftedtech.co.ke/api/v1/monitors \
+curl https://monitor.gifted.co.ke/api/v1/monitors \
   -H "X-API-Key: gm_your_api_key_here"
 
 # Create a monitor
-curl -X POST https://monitor.giftedtech.co.ke/api/v1/monitors \
+curl -X POST https://monitor.gifted.co.ke/api/v1/monitors \
   -H "X-API-Key: gm_your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{"name":"My API","url":"https://api.example.com","interval_mins":5}'
 
 # Delete a monitor
-curl -X DELETE https://monitor.giftedtech.co.ke/api/v1/monitors/42 \
+curl -X DELETE https://monitor.gifted.co.ke/api/v1/monitors/42 \
   -H "X-API-Key: gm_your_api_key_here"
 ```
 
@@ -1222,4 +1222,4 @@ MIT — see [LICENSE](LICENSE)
 
 ---
 
-<p align="center">Built by <a href="https://me.giftedtech.co.ke">Maurice Gift</a> · <a href="https://giftedtech.co.ke">Gifted Tech</a></p>
+<p align="center">Built by <a href="https://me.gifted.co.ke">Maurice Gift</a> · <a href="https://gifted.co.ke">Gifted Tech</a></p>
