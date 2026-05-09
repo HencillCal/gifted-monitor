@@ -71,7 +71,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         <div className="main flex items-center justify-between h-14">
           <Link to="/" className="flex items-center gap-2 font-bold text-base font-outfit">
             <img
-              src="https://files.giftedtech.co.ke/image/u2wvoimage.jpg"
+              src="https://files.gifted.co.ke/image/u2wvoimage.jpg"
               alt="Gifted Monitor"
               className="w-8 h-8 rounded-full object-cover shrink-0"
             />
@@ -160,7 +160,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               <div className="flex items-center justify-between px-5 h-14 border-b border-line shrink-0">
                 <Link to="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 font-bold text-sm font-outfit">
                   <img
-                    src="https://files.giftedtech.co.ke/image/u2wvoimage.jpg"
+                    src="https://files.gifted.co.ke/image/u2wvoimage.jpg"
                     alt="Gifted Monitor"
                     className="w-7 h-7 rounded-full object-cover shrink-0"
                   />
@@ -236,7 +236,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           </div>
           <p className="text-xs text-muted text-center">
             {(() => { const y = new Date().getFullYear(); return y === 2026 ? `© ${y}` : `© 2026–${y}`; })()}{" "}
-            <a href="https://me.giftedtech.co.ke" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium">Gifted Tech</a>
+            <a href="https://me.gifted.co.ke" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium">Gifted Tech</a>
             {" "}· All rights reserved.
           </p>
         </div>
