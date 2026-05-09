@@ -100,8 +100,8 @@ export default function Terms() {
                     For questions about these terms, contact us at{" "}
                     <a href="/contact" className="text-emerald-500 hover:underline">our contact page</a>{" "}
                     or email{" "}
-                    <a href="mailto:maurice@giftedtech.co.ke" className="text-emerald-500 hover:underline">
-                      maurice@giftedtech.co.ke
+                    <a href="mailto:maurice@gifted.co.ke" className="text-emerald-500 hover:underline">
+                      maurice@gifted.co.ke
                     </a>.
                   </p>
                 )}
