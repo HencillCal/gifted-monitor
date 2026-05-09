@@ -52,7 +52,7 @@ function logo() {
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px">
       <tr>
         <td align="center">
-          <img src="https://files.giftedtech.co.ke/image/u2wvoimage.jpg"
+          <img src="https://files.gifted.co.ke/image/u2wvoimage.jpg"
                alt="Gifted Monitor" width="56" height="56"
                style="border-radius:50%;display:block;border:2px solid #10b981;margin:0 auto 10px;object-fit:cover" />
           <p style="margin:0;font-size:17px;font-weight:700;font-family:Arial,sans-serif">
@@ -77,7 +77,7 @@ function emailWrapper(content) {
         <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:32px;border-top:1px solid #e5e7eb;padding-top:20px">
           <tr>
             <td style="font-size:12px;color:#9ca3af;text-align:center">
-              &copy; ${yearStr} Gifted Monitor &middot; <a href="https://monitor.giftedtech.co.ke" style="color:#10b981;text-decoration:none">monitor.giftedtech.co.ke</a><br>
+              &copy; ${yearStr} Gifted Monitor &middot; <a href="https://monitor.gifted.co.ke" style="color:#10b981;text-decoration:none">monitor.gifted.co.ke</a><br>
               You are receiving this because you have an account with Gifted Monitor.
             </td>
           </tr>
