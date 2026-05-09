@@ -96,7 +96,7 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-sm font-semibold">api.giftedtech.co.ke</span>
+                    <span className="text-sm font-semibold">api.gifted.co.ke</span>
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">UP</span>
                 </div>
