@@ -79,3 +79,10 @@ export interface ApiKey {
   is_active: boolean;
   created_at: string;
 }
+
+export interface PaginatedMonitors {
+  monitors: Monitor[];
+  total: number;
+  page: number;
+  limit: number;
+}
