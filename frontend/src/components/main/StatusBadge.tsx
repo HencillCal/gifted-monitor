@@ -1,15 +1,16 @@
 import clsx from "clsx";
 
-type Status = "up" | "down" | "unknown";
+type Status = "up" | "down" | "unknown" | null;
 
 interface StatusBadgeProps {
   status: Status;
   size?: "sm" | "md";
 }
 
-const labels: Record<Status, string> = { up: "UP", down: "DOWN", unknown: "UNKNOWN" };
+const labels: Record<"up" | "down" | "unknown", string> = { up: "UP", down: "DOWN", unknown: "UNKNOWN" };
 
-export default function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
+export default function StatusBadge({ status: rawStatus, size = "md" }: StatusBadgeProps) {
+  const status: "up" | "down" | "unknown" = rawStatus ?? "unknown";
   return (
     <span className={clsx(
       "inline-flex items-center gap-1.5 font-semibold rounded-full",
